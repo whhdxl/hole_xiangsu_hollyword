@@ -268,15 +268,28 @@ export function createWorld(landmarks = []) {
   for(const side of [-1,1])for(let i=0;i<4;i++)bush(side*(1.5+i*.68),-18.1,.48,true,3.55);
   // HOLLYWOOD is actual voxel lettering, standing on the hillside.
   const font={H:['10001','10001','10001','11111','10001','10001','10001'],O:['01110','10001','10001','10001','10001','10001','01110'],L:['10000','10000','10000','10000','10000','10000','11111'],Y:['10001','10001','01010','00100','00100','00100','00100'],W:['10001','10001','10001','10101','10101','10101','01010'],D:['11110','10001','10001','10001','10001','10001','11110']};
-  entity('HOLLYWOOD',0,-14.5);for(let c=0;c<9;c++){const rows=font['HOLLYWOOD'[c]];for(let y=0;y<7;y++)for(let x=0;x<5;x++)if(rows[y][x]==='1')block(-3.64+(c*6+x)*.14,2.54+(6-y)*.2,-14.5,.142,.202,.24,'#fffbe6');block(-3.36+c*.84,2.24,-14.55,.10,.7,.12,'#d8ceaa');}
+  entity('HOLLYWOOD · 草坡台地',0,-14.7);
+  for(let layer=0;layer<7;layer++)earthBlock(0,2.28+layer*.20,-14.7,9.8-layer*.11,.20,2.15-layer*.11,layer%2?'#567b45':'#6c8950');
+  earthBlock(0,3.61,-14.7,9.0,.16,1.48,'#2f6845');
+  entity('HOLLYWOOD',0,-14.5);
+  const letterStep=8.6/53,letterRow=2/7;
+  for(let c=0;c<9;c++){
+    const rows=font['HOLLYWOOD'[c]];
+    for(let y=0;y<7;y++)for(let x=0;x<5;x++)if(rows[y][x]==='1'){
+      const xx=-4.3+(c*6+x+.5)*letterStep,yy=3.9+(6-y+.5)*letterRow;
+      block(xx,yy,-14.5,letterStep*.99,letterRow*.99,.34,'#c7cdb7');
+      block(xx,yy,-14.302,letterStep*.985,letterRow*.985,.055,'#fffef0');
+    }
+    block(-4.3+(c*6+2.5)*letterStep,3.78,-14.55,.085,.32,.12,'#a0b29a');
+  }
   for(let i=0;i<30;i++){const x=-24+random()*48,z=-15-random()*10; if(Math.abs(x)<5)continue;palm(x,z,2.2+random(), Math.max(.4,3.5*Math.exp(-(((x+1)/14)**2)-((z+21)/10)**2)));}
   // A small distant skyline, kept behind the playable city.
   for(let i=0;i<19;i++){const x=-28+i*.91,h=1.4+random()*4;block(x,h/2+.3,-25-random()*2,.6+random()*.65,h,.8,'#86b5cd',true);for(let y=1;y<h;y+=.7)block(x,y,-24.5,.66,.12,.06,'#b6d8df',true);}
   // Downtown cluster flanking the open city axis.
-  glassTower(-4.5,-9.1,1.02,7.3);
-  tower(-7.5,-7.9,2.3,2.35,5.2,'#ded0b2');
-  glassTower(4.55,-9,1.0,6.7);
-  tower(7.6,-7.9,2.2,2.3,5.7,'#dde1d6');
+  glassTower(-5.7,-9.1,1.02,7.3);
+  tower(-8.4,-7.9,2.3,2.35,5.2,'#ded0b2');
+  glassTower(5.75,-9,1.0,6.7);
+  tower(8.5,-7.9,2.2,2.3,5.7,'#dde1d6');
   tower(-4.4,-5.4,2.1,1.7,2.4,'#cbd5c6');
   tower(4.7,-5.5,2.2,1.8,4.15,'#b96940');
   fountain(0,-7.1,.8);
