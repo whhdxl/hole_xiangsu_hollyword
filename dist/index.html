@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+  <meta name="theme-color" content="#ecf6fa">
+  <meta name="description" content="探索一座精细的洛杉矶体素城市。拖动黑洞，吞噬街道上的物体，看像素建筑逐块坍塌。">
+  <title>Los Angeles · Voxel Escape</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='%23576bff'/%3E%3Ccircle cx='32' cy='32' r='22' fill='%23101a34'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main id="game" aria-label="洛杉矶黑洞吞噬游戏">
+    <canvas id="scene" tabindex="0" aria-label="3D 城市场景。按住鼠标拖动黑洞，或使用方向键移动。滚轮缩放，空格暂停。"></canvas>
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="Voxel Escape 首页"><span class="brand-icon"><i></i><i></i><i></i></span><span>VOXEL<span class="brand-light"> ESCAPE</span></span></a>
+      <div class="location"><span class="sun">☀</span> LOS ANGELES <span class="separator"></span><span>城市巡游</span></div>
+      <div class="top-actions">
+        <button id="sound" class="icon-button" aria-label="开启音效" aria-pressed="false" title="音效"><svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path id="sound-waves" d="m16 9 5 6m0-6-5 6"/></svg></button>
+        <button id="pause" class="icon-button" aria-label="暂停游戏" aria-pressed="false" title="暂停（空格）"><svg viewBox="0 0 24 24"><path id="pause-icon" d="M8 5v14M16 5v14"/></svg></button>
+        <button id="restart" class="restart" title="重新开始（R）"><svg viewBox="0 0 24 24"><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/></svg><span>重新开始</span></button>
+      </div>
+    </header>
+    <section class="progress-panel" aria-label="吞噬进度">
+      <div class="progress-top"><span class="eyebrow">城市探索</span><span class="progress-percent" id="percent">0<span>%</span></span></div>
+      <div class="progress-track" role="progressbar" aria-label="已吞噬的像素块" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"><div id="progress-fill"></div></div>
+      <div class="progress-bottom"><span><span class="tiny-cube">◇</span> <b id="count">0</b> 块已吞噬</span><span id="level">Lv. 1</span></div>
+    </section>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <div id="paused" class="pause-overlay" hidden><div><span class="eyebrow">TAKE A BREATH</span><h2>城市等你继续</h2><button id="resume">继续探索 <span>▶</span></button></div></div>
+    <div id="loading" class="loading"><div class="loading-hole"></div><p>正在搭建洛杉矶…</p></div>
+    <div id="error" class="error" hidden><h2>场景暂时无法加载</h2><p id="error-message">请使用支持 WebGL 2 的浏览器，并开启硬件加速。</p><button onclick="location.reload()">重新加载</button></div>
+    <footer class="bottom-bar">
+      <div class="chapter"><div class="eyebrow"><span class="chapter-num">01</span> CALIFORNIA COLLECTION</div><h1>Los Angeles<span>City Escape</span></h1><div class="chapter-caption"><span class="location-pin">⌖</span><span id="district">Beverly Hills</span><span class="caption-dot">·</span><span>像素城市，自由探索</span></div></div>
+      <div id="hint" class="hint"><span class="mouse-icon"></span><span>按住并拖动，开始吞噬</span><span class="hint-divider"></span><span class="hint-secondary">滚轮缩放</span></div>
+      <div class="view-controls" aria-label="视角控制"><button id="zoom-out" aria-label="缩小视角" title="缩小">−</button><span id="zoom-label">100%</span><button id="zoom-in" aria-label="放大视角" title="放大">+</button><span class="control-divider"></span><button id="reset-view" aria-label="恢复全景" title="恢复全景"><svg viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M8 12h8m-4-4v8"/></svg></button></div>
+    </footer>
+  </main>
+  <script type="module" src="./game.js"></script>
+</body>
+</html>
