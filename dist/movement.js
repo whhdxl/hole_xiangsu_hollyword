@@ -6,7 +6,7 @@ export function movementScale(level) {
 
 export function movementBounds(radius) {
   // Includes the bright rim, the 11% upgrade overshoot and an extra clear strip.
-  const inset = radius * 1.21 + .65;
+  const inset = radius * 1.23 + .65;
   return {minX:MAP_EDGES.minX+inset,maxX:MAP_EDGES.maxX-inset,minZ:MAP_EDGES.minZ+inset,maxZ:MAP_EDGES.maxZ-inset};
 }
 

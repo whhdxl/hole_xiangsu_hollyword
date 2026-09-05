@@ -1,6 +1,6 @@
 export const CAMERA_FOV = 35;
 export const CAMERA_PITCH = 35.5 * Math.PI / 180;
-export const CAMERA_SPANS = [18, 21, 25, 30, 36, 42, 48, 56, 67];
+export const CAMERA_SPANS = Array.from({length:20},(_,i)=>18+49*(Math.pow(9.8/1.12,i/19)-1)/(9.8/1.12-1));
 
 // The hole sits at 72% of screen height, with space to see the next target.
 export function followPose(x, z, span) {

@@ -1,6 +1,7 @@
 import * as THREE from './vendor/three.module.js';
 import {createWorld} from './world.js';
-import {Simulation} from './physics.js';
+import {Simulation,LEVELS} from './physics.js';
+import {VoxelBatches} from './voxel-batches.js';
 import {CAMERA_FOV,CAMERA_PITCH,CAMERA_SPANS,followPose} from './camera-rig.js';
 import {movementScale,clampHolePosition,moveHole} from './movement.js';
 
@@ -29,7 +30,7 @@ function initialize(landmarks){
   renderer.shadowMap.autoUpdate=false;
   const hemi=new THREE.HemisphereLight('#dff3ff','#927f52',1.85);scene.add(hemi);
   const sunlight=new THREE.DirectionalLight('#fff0d1',3.6);sunlight.position.set(-22,42,18);
-  sunlight.castShadow=true;sunlight.shadow.mapSize.set(3072,3072);
+  sunlight.castShadow=true;sunlight.shadow.mapSize.set(2048,2048);
   Object.assign(sunlight.shadow.camera,{left:-44,right:44,top:44,bottom:-42,near:.5,far:140});
   sunlight.shadow.bias=-.00018;sunlight.shadow.normalBias=.045;sunlight.shadow.radius=2;
   sunlight.target.position.set(0,0,-4);scene.add(sunlight,sunlight.target);
@@ -55,21 +56,8 @@ function initialize(landmarks){
     shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nuniform vec3 hole; varying vec3 groundWorld;');
     shader.fragmentShader=shader.fragmentShader.replace('#include <clipping_planes_fragment>','#include <clipping_planes_fragment>\nif(distance(groundWorld.xz,hole.xy)<hole.z) discard;');
   };
-  // Spatial batches keep a close follow-camera from drawing the entire city.
-  const batches=[],buckets=new Map(),batchOf=new Uint16Array(world.blocks.length),slotOf=new Uint32Array(world.blocks.length),dirtyBatches=new Set();
-  world.blocks.forEach((b,i)=>{const key=`${Math.floor(b.x/7)},${Math.floor(b.z/7)}`;if(!buckets.has(key))buckets.set(key,[]);buckets.get(key).push(i);});
-  for(const ids of buckets.values()){
-    const mesh=new THREE.InstancedMesh(geometry,voxelMat,ids.length);mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);mesh.castShadow=true;mesh.receiveShadow=true;
-    const batch={mesh,min:Infinity,max:-1};const index=batches.length;batches.push(batch);ids.forEach((id,slot)=>{batchOf[id]=index;slotOf[id]=slot;});scene.add(mesh);
-  }
-  function transform(i,b){
-    dummy.position.set(b.x,b.y,b.z);dummy.rotation.set(b.rx||0,b.rotation||0,b.rz||0);const s=b.state===3?0:1;dummy.scale.set(b.sx*s,b.sy*s,b.sz*s);dummy.updateMatrix();
-    const batch=batches[batchOf[i]],slot=slotOf[i];batch.mesh.setMatrixAt(slot,dummy.matrix);batch.min=Math.min(batch.min,slot);batch.max=Math.max(batch.max,slot);dirtyBatches.add(batch);
-    const sphere=batch.mesh.boundingSphere;if(sphere&&b.state!==3){const d2=(b.x-sphere.center.x)**2+(b.y-sphere.center.y)**2+(b.z-sphere.center.z)**2;if(d2>(sphere.radius-.5)**2)sphere.radius=Math.sqrt(d2)+1;}
-  }
-  function flushVoxels(){for(const batch of dirtyBatches){batch.mesh.instanceMatrix.addUpdateRange(batch.min*16,(batch.max-batch.min+1)*16);batch.mesh.instanceMatrix.needsUpdate=true;batch.min=Infinity;batch.max=-1;}dirtyBatches.clear();}
-  world.blocks.forEach((b,i)=>{transform(i,b);color.set(b.color).multiplyScalar(b.shade);batches[batchOf[i]].mesh.setColorAt(slotOf[i],color);});
-  for(const b of batches){b.mesh.computeBoundingSphere();b.mesh.boundingSphere.radius+=5;b.baseSphere=b.mesh.boundingSphere.clone();}flushVoxels();
+  const voxels=new VoxelBatches(scene,world,geometry,voxelMat);
+  const transform=voxels.transform;
   const terrain=new THREE.InstancedMesh(geometry,groundMat,world.terrain.length);terrain.receiveShadow=true;terrain.castShadow=true;terrain.frustumCulled=false;
   world.terrain.forEach((b,i)=>{dummy.position.set(b.x,b.y,b.z);dummy.rotation.set(0,b.rotation,0);dummy.scale.set(b.sx,b.sy,b.sz);dummy.updateMatrix();terrain.setMatrixAt(i,dummy.matrix);terrain.setColorAt(i,color.set(b.color).multiplyScalar(b.shade));});scene.add(terrain);
   // A large cyan world around the raised city, with separated distant city islands.
@@ -100,23 +88,29 @@ function initialize(landmarks){
     const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=4;
     const mesh=new THREE.Mesh(new THREE.PlaneGeometry(s.w,s.h),new THREE.MeshStandardMaterial({map:tex,roughness:.8}));mesh.position.set(s.x,s.y,s.z);mesh.rotation.y=s.rotation||0;scene.add(mesh);return mesh;
   });
-  // A deep, open black hole with a cool inner wall and fine electric rim.
+  // Broad white rim, ink outline, graphite cavity and a warm upgrade glow.
   const aperture=new THREE.Group();scene.add(aperture);
-  const darkness=new THREE.Mesh(new THREE.CircleGeometry(1,96),new THREE.MeshBasicMaterial({color:'#02040e'}));darkness.rotation.x=-Math.PI/2;darkness.position.y=-.9;aperture.add(darkness);
-  const wall=new THREE.Mesh(new THREE.CylinderGeometry(1,.82,.98,96,1,true),new THREE.MeshBasicMaterial({color:'#11163b',side:THREE.DoubleSide}));wall.position.y=-.41;aperture.add(wall);
-  function ring(radius,tube,y,c){const m=new THREE.Mesh(new THREE.TorusGeometry(radius,tube,8,96),new THREE.MeshBasicMaterial({color:c}));m.rotation.x=-Math.PI/2;m.position.y=y;aperture.add(m);return m;}
-  ring(1,.052,.075,'#344cff');ring(1.065,.022,.07,'#a5eaff');ring(.955,.018,-.045,'#5a74ff');ring(.88,.012,-.38,'#213bb7');
-  const halo=new THREE.Mesh(new THREE.RingGeometry(1.05,1.21,96),new THREE.MeshBasicMaterial({color:'#6ba8ff',transparent:true,opacity:.19,side:THREE.DoubleSide,depthWrite:false}));halo.rotation.x=-Math.PI/2;halo.position.y=.062;aperture.add(halo);
-  const upgradeRing=new THREE.Mesh(new THREE.RingGeometry(1,1.13,96),new THREE.MeshBasicMaterial({color:'#ffe26b',transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false}));upgradeRing.rotation.x=-Math.PI/2;upgradeRing.position.y=.24;scene.add(upgradeRing);
+  const darkness=new THREE.Mesh(new THREE.CircleGeometry(.945,80),new THREE.MeshBasicMaterial({color:'#282828',toneMapped:false}));darkness.rotation.x=-Math.PI/2;darkness.position.y=-.87;aperture.add(darkness);
+  const wall=new THREE.Mesh(new THREE.CylinderGeometry(.945,.82,.98,80,1,true),new THREE.MeshBasicMaterial({color:'#514d47',side:THREE.DoubleSide,toneMapped:false}));wall.position.y=-.4;aperture.add(wall);
+  function ring(radius,tube,y,c){const m=new THREE.Mesh(new THREE.TorusGeometry(radius,tube,6,80),new THREE.MeshBasicMaterial({color:c,toneMapped:false}));m.rotation.x=-Math.PI/2;m.position.y=y;aperture.add(m);return m;}
+  const whiteRim=new THREE.Mesh(new THREE.RingGeometry(.945,1.078,80),new THREE.MeshBasicMaterial({color:'#ffffff',side:THREE.DoubleSide,toneMapped:false}));whiteRim.rotation.x=-Math.PI/2;whiteRim.position.y=.105;aperture.add(whiteRim);
+  ring(1.083,.015,.1,'#20251b');ring(.945,.018,.093,'#161914');ring(.918,.015,-.08,'#aaa296');ring(.872,.024,-.43,'#33322f');
+  const halo=new THREE.Mesh(new THREE.PlaneGeometry(4.8,4.8),new THREE.ShaderMaterial({uniforms:{strength:{value:.22}},vertexShader:'varying vec2 glowUV; void main(){glowUV=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',fragmentShader:'varying vec2 glowUV; uniform float strength; void main(){float r=length(glowUV-.5)*4.8;float a=exp(-pow((r-1.03)/.54,2.0))*strength*smoothstep(.94,1.06,r);gl_FragColor=vec4(1.0,.88,.25,a);}',transparent:true,side:THREE.DoubleSide,depthWrite:false}));halo.rotation.x=-Math.PI/2;halo.position.y=.061;aperture.add(halo);
+  const upgradeRings=[1,1.055].map((n,i)=>{const m=new THREE.Mesh(new THREE.RingGeometry(1,1.045,80),new THREE.MeshBasicMaterial({color:i?'#fff8cd':'#ffdf62',transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false,toneMapped:false}));m.rotation.x=-Math.PI/2;scene.add(m);return m;});
+  const arrowGeometry=new THREE.BufferGeometry();arrowGeometry.setAttribute('position',new THREE.Float32BufferAttribute([-.35,0,.27,.35,0,.27,0,0,-.45],3));arrowGeometry.computeVertexNormals();
+  const directionArrow=new THREE.Mesh(arrowGeometry,new THREE.MeshBasicMaterial({color:'#ffdf65',side:THREE.DoubleSide,toneMapped:false}));scene.add(directionArrow);
+  let directionX=0,directionZ=-1,previousHoleX=sim.hole.x,previousHoleZ=sim.hole.z;
+  const sizeCanvas=document.createElement('canvas');sizeCanvas.width=512;sizeCanvas.height=128;const sizeContext=sizeCanvas.getContext('2d'),sizeTexture=new THREE.CanvasTexture(sizeCanvas);sizeTexture.colorSpace=THREE.SRGBColorSpace;
+  const sizeLabel=new THREE.Sprite(new THREE.SpriteMaterial({map:sizeTexture,depthTest:false,depthWrite:false,toneMapped:false}));sizeLabel.renderOrder=9;scene.add(sizeLabel);
+  function updateSizeLabel(){sizeContext.clearRect(0,0,512,128);sizeContext.font='900 85px Arial';sizeContext.textAlign='center';sizeContext.textBaseline='middle';sizeContext.lineJoin='round';sizeContext.strokeStyle='#263d35';sizeContext.lineWidth=10;sizeContext.strokeText(`Size ${sim.level}`,256,67);sizeContext.fillStyle='#fff';sizeContext.fillText(`Size ${sim.level}`,256,67);sizeTexture.needsUpdate=true;}
+  updateSizeLabel();
   const upgradeCanvas=document.createElement('canvas');upgradeCanvas.width=1024;upgradeCanvas.height=256;const uc=upgradeCanvas.getContext('2d');uc.textAlign='center';uc.textBaseline='middle';uc.font='italic 900 150px Arial';uc.lineJoin='round';uc.strokeStyle='#435743';uc.lineWidth=11;uc.strokeText('Size Up!',512,120);uc.fillStyle='#fffdef';uc.fillText('Size Up!',512,120);const upgradeTexture=new THREE.CanvasTexture(upgradeCanvas);upgradeTexture.colorSpace=THREE.SRGBColorSpace;
   const sizeUpSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:upgradeTexture,transparent:true,depthTest:false,depthWrite:false}));sizeUpSprite.renderOrder=10;sizeUpSprite.visible=false;scene.add(sizeUpSprite);
   const burstPositions=new Float32Array(72*3),burstGeometry=new THREE.BufferGeometry();burstGeometry.setAttribute('position',new THREE.BufferAttribute(burstPositions,3));const burst=new THREE.Points(burstGeometry,new THREE.PointsMaterial({color:'#fff5a3',size:.14,transparent:true,opacity:0,depthWrite:false}));burst.frustumCulled=false;scene.add(burst);
-  const sparkCount=52,sparkPositions=new Float32Array(sparkCount*3);const sparksGeometry=new THREE.BufferGeometry();sparksGeometry.setAttribute('position',new THREE.BufferAttribute(sparkPositions,3));
-  const sparks=new THREE.Points(sparksGeometry,new THREE.PointsMaterial({size:.045,color:'#9dcdff',transparent:true,opacity:.7,depthWrite:false}));sparks.frustumCulled=false;scene.add(sparks);
   // Follow at every screen size. Upgrades change height, distance and visible area.
   let zoom=1,width=innerWidth,height=innerHeight,paused=false,dragging=false,started=false,soundOn=false;
   let targetX=sim.hole.x,targetZ=sim.hole.z,lastLevel=1,lastCount=-1,upgradeTime=-10,lastFrame=performance.now(),lastShadow=0,toastTimer,hintTimer;
-  let overview=true,currentSpan=47,visualTime=0,hitStop=0,openingTime=0;
+  let overview=true,currentSpan=47,visualTime=0,openingTime=0;
   let audioCtx=null,lastSound=0,dragStart=null,activePointerId=null,shadowDirty=false;
   const lookTarget=new THREE.Vector3(0,1.2,-1),cameraPosition=new THREE.Vector3(0,44,61),desiredPosition=new THREE.Vector3(),desiredTarget=new THREE.Vector3(),raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2(),groundPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0),point=new THREE.Vector3();
   const keys=new Set();
@@ -135,7 +129,7 @@ function initialize(landmarks){
   $('scene').addEventListener('wheel',e=>{e.preventDefault();setZoom(zoom*Math.exp(-e.deltaY*.001));},{passive:false});
   function togglePause(){paused=!paused;$('paused').hidden=!paused;$('pause').setAttribute('aria-pressed',String(paused));$('pause').setAttribute('aria-label',paused?'继续游戏':'暂停游戏');$('pause-icon').setAttribute('d',paused?'M8 4 19 12 8 20Z':'M8 5v14M16 5v14');releasePointer();keys.clear();}
   function toast(t){$('toast').textContent=t;$('toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('visible'),2400);}
-  function reset(){sim.reset(transform);flushVoxels();for(const b of batches)b.mesh.boundingSphere.copy(b.baseSphere);signMeshes.forEach(m=>m.visible=true);targetX=0;targetZ=20.4;lastLevel=1;lastCount=-1;upgradeTime=-10;started=false;overview=true;hitStop=0;currentSpan=47;releasePointer();keys.clear();if(paused)togglePause();clearTimeout(hintTimer);$('hint').classList.remove('subtle');$('toast').classList.remove('visible');setZoom(1);renderer.shadowMap.needsUpdate=true;updateHUD();}
+  function reset(){sim.reset();voxels.reset();updateSizeLabel();directionX=0;directionZ=-1;previousHoleX=0;previousHoleZ=20.4;signMeshes.forEach(m=>m.visible=true);targetX=0;targetZ=20.4;lastLevel=1;lastCount=-1;upgradeTime=-10;started=false;overview=true;currentSpan=47;releasePointer();keys.clear();if(paused)togglePause();clearTimeout(hintTimer);$('hint').classList.remove('subtle');$('toast').classList.remove('visible');setZoom(1);renderer.shadowMap.needsUpdate=true;updateHUD();}
   $('pause').onclick=togglePause;$('resume').onclick=togglePause;$('restart').onclick=reset;
   $('zoom-in').onclick=()=>setZoom(zoom*1.15);$('zoom-out').onclick=()=>setZoom(zoom/1.15);$('reset-view').onclick=()=>{overview=!overview;setZoom(1);};
   $('sound').onclick=()=>{soundOn=!soundOn;if(soundOn){audioCtx??=new(window.AudioContext||window.webkitAudioContext)();audioCtx.resume().catch(err=>console.warn('Audio could not resume:',err));} $('sound').setAttribute('aria-pressed',String(soundOn));$('sound').setAttribute('aria-label',soundOn?'关闭音效':'开启音效');$('sound-waves').setAttribute('d',soundOn?'M15 8c3 2 3 6 0 8m3-11c5 4 5 10 0 14':'m16 9 5 6m0-6-5 6');};
@@ -149,8 +143,8 @@ function initialize(landmarks){
     if(sim.count===lastCount)return;lastCount=sim.count;
     const percent=Math.floor(sim.count/world.blocks.length*100);$('count').textContent=sim.count.toLocaleString();$('percent').innerHTML=`${percent}<span>%</span>`;$('progress-fill').style.width=`${percent}%`;document.querySelector('[role="progressbar"]').setAttribute('aria-valuenow',String(percent));
     const level=sim.level;
-    $('level').textContent=`Lv. ${level}`;
-    if(level>lastLevel){upgradeTime=visualTime;hitStop=.065;lastLevel=level;playUpgrade();}
+    $('level').textContent=`Lv. ${level} / ${LEVELS.length}`;
+    if(level>lastLevel){upgradeTime=visualTime;lastLevel=level;updateSizeLabel();playUpgrade();}
     if(sim.count===world.blocks.length)toast('城市已清空！点击重新开始，再探索一次。');
   }
   function playUpgrade(){if(!soundOn||!audioCtx)return;const t=audioCtx.currentTime;for(let i=0;i<3;i++){const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='triangle';o.frequency.value=[392,523.25,783.99][i];g.gain.setValueAtTime(0,t);g.gain.setValueAtTime(.07,t+i*.045);g.gain.exponentialRampToValueAtTime(.001,t+.3+i*.03);o.connect(g);g.connect(audioCtx.destination);o.start(t+i*.045);o.stop(t+.4);o.onended=()=>{o.disconnect();g.disconnect();};}}
@@ -166,12 +160,12 @@ function initialize(landmarks){
   function frame(now){
     requestAnimationFrame(frame);const dt=Math.min((now-lastFrame)/1000,.034);lastFrame=now;
     if(!paused&&!document.hidden){
-      visualTime+=dt;const frozen=Math.min(hitStop,dt),simulationDt=dt-frozen;hitStop-=frozen;
+      visualTime+=dt;const simulationDt=dt;
       let mx=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0),mz=(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('w')||keys.has('arrowup')?1:0);
       if(mx||mz){const n=Math.hypot(mx,mz),speed=9*movementScale(sim.level),target=clampHolePosition(targetX+mx/n*simulationDt*speed,targetZ+mz/n*simulationDt*speed,sim.hole.radius);targetX=target.x;targetZ=target.z;}
       const target=moveHole(sim.hole,targetX,targetZ,simulationDt,sim.level);targetX=target.x;targetZ=target.z;
       // Waiting before the first gesture lets the full composition remain intact.
-      if(started&&simulationDt>0){sim.tick(simulationDt,transform,playPop);const position=clampHolePosition(sim.hole.x,sim.hole.z,sim.hole.radius);sim.hole.x=position.x;sim.hole.z=position.z;const target=clampHolePosition(targetX,targetZ,sim.hole.radius);targetX=target.x;targetZ=target.z;if(dirtyBatches.size){flushVoxels();shadowDirty=true;}}
+      if(started&&simulationDt>0){sim.tick(simulationDt,transform,playPop);const position=clampHolePosition(sim.hole.x,sim.hole.z,sim.hole.radius);sim.hole.x=position.x;sim.hole.z=position.z;const target=clampHolePosition(targetX,targetZ,sim.hole.radius);targetX=target.x;targetZ=target.z;if(voxels.dirty.size){voxels.flush();shadowDirty=true;}}
       world.signs.forEach((s,i)=>{if(s.entity>=0)signMeshes[i].visible=!world.entities[s.entity].collapsing;});
       updateHUD();
       updateCamera(dt);
@@ -179,14 +173,16 @@ function initialize(landmarks){
     holeUniform.set(sim.hole.x,sim.hole.z,sim.hole.radius);
     const up=visualTime-upgradeTime,pop=up>=0&&up<.24?Math.sin(up/.24*Math.PI)*.11:0,displayRadius=sim.hole.radius*(1+pop);
     aperture.position.set(sim.hole.x,0,sim.hole.z);aperture.scale.set(displayRadius,1,displayRadius);holeUniform.z=displayRadius;
-    halo.material.opacity=.16+Math.sin(now*.002)*.045;
-    upgradeRing.material.opacity=Math.max(0,1-up/.64)*.95;upgradeRing.position.set(sim.hole.x,.25,sim.hole.z);upgradeRing.scale.setScalar(sim.hole.radius*(1+Math.min(up,.64)*2.7));
+    halo.material.uniforms.strength.value=.22+(up>=0&&up<.85?Math.sin(up/.85*Math.PI)*.52:0);
+    for(let i=0;i<upgradeRings.length;i++){const age=up-i*.11,m=upgradeRings[i];m.visible=age>=0&&age<.78;m.material.opacity=m.visible?(1-age/.78)*.9:0;m.position.set(sim.hole.x,.19+i*.025,sim.hole.z);m.scale.setScalar(sim.hole.radius*(1+Math.max(0,age)*1.55));}
     sizeUpSprite.visible=up>=0&&up<.87;sizeUpSprite.material.opacity=Math.min(1,Math.max(0,(.87-up)/.25));sizeUpSprite.position.set(sim.hole.x,sim.hole.radius*.76+1.1+up*.6,sim.hole.z-.15);sizeUpSprite.scale.set(sim.hole.radius*3.1*(1+pop),sim.hole.radius*.775*(1+pop),1);
-    burst.material.opacity=Math.max(0,1-up/.7);for(let i=0;i<72;i++){const a=i/72*Math.PI*2,r=sim.hole.radius*(1+Math.min(up,.7)*(1.4+(i%4)*.16));burstPositions[i*3]=sim.hole.x+Math.cos(a)*r;burstPositions[i*3+1]=.25+Math.max(0,Math.sin(Math.min(up,.7)/.7*Math.PI))*(.4+i%5*.18);burstPositions[i*3+2]=sim.hole.z+Math.sin(a)*r;}burstGeometry.attributes.position.needsUpdate=true;
-    for(let i=0;i<sparkCount;i++){const a=i/sparkCount*Math.PI*2+now*.00016,rad=sim.hole.radius*(1.035+.04*Math.sin(i*17));sparkPositions[i*3]=sim.hole.x+Math.cos(a)*rad;sparkPositions[i*3+1]=.08+.13*(.5+.5*Math.sin(now*.002+i));sparkPositions[i*3+2]=sim.hole.z+Math.sin(a)*rad;}
-    sparksGeometry.attributes.position.needsUpdate=true;
-    if(shadowDirty&&now-lastShadow>160){renderer.shadowMap.needsUpdate=true;lastShadow=now;shadowDirty=false;}
-    const district=sim.hole.z< -13?'Hollywood Hills':sim.hole.z< -4?'Downtown Los Angeles':sim.hole.z<7?(sim.hole.x< -7?'Sunset Studios':sim.hole.x>10?'The Grove':'Liberty Plaza'):'Beverly Hills';$('district').textContent=district;
+    burst.visible=up>=0&&up<.7;
+    if(burst.visible){burst.material.opacity=1-up/.7;for(let i=0;i<72;i++){const a=i/72*Math.PI*2,r=sim.hole.radius*(1+up*(1.4+(i%4)*.16));burstPositions[i*3]=sim.hole.x+Math.cos(a)*r;burstPositions[i*3+1]=.25+Math.sin(up/.7*Math.PI)*(.4+i%5*.18);burstPositions[i*3+2]=sim.hole.z+Math.sin(a)*r;}burstGeometry.attributes.position.needsUpdate=true;}
+    const travelX=sim.hole.x-previousHoleX,travelZ=sim.hole.z-previousHoleZ,travel=Math.hypot(travelX,travelZ);if(travel>.002){directionX=travelX/travel;directionZ=travelZ/travel;}previousHoleX=sim.hole.x;previousHoleZ=sim.hole.z;
+    directionArrow.position.set(sim.hole.x+directionX*displayRadius*1.48,.2,sim.hole.z+directionZ*displayRadius*1.48);directionArrow.rotation.y=Math.atan2(-directionX,-directionZ);directionArrow.scale.setScalar(displayRadius*.48);
+    sizeLabel.position.set(sim.hole.x,.16,sim.hole.z+displayRadius*1.46);sizeLabel.scale.set(displayRadius*1.86,displayRadius*.465,1);
+    if(shadowDirty&&now-lastShadow>220){renderer.shadowMap.needsUpdate=true;lastShadow=now;shadowDirty=false;}
+    const district=sim.hole.z< -13?'Hollywood Hills':sim.hole.z< -4?'Downtown Los Angeles':sim.hole.z<7?(sim.hole.x< -7?'Sunset Studios':sim.hole.x>10?'The Grove':'Fountain Plaza'):sim.hole.z<15&&Math.abs(sim.hole.x)<4?'Liberty Plaza':'Beverly Hills';$('district').textContent=district;
     renderer.render(scene,camera);
   }
   layout();currentSpan=Math.max(47,70/(width/height));updateCamera(1);renderer.shadowMap.needsUpdate=true;renderer.render(scene,camera);$('loading').hidden=true;requestAnimationFrame(frame);

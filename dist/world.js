@@ -51,23 +51,23 @@ export function createWorld(landmarks = []) {
   function palm(x, z, h = 3, base = .12) {
     entity('棕榈树', x, z);
     for (let y = base; y < h + base; y += .3) block(x + .1 * Math.sin(y), y + .15, z, .26, .285, .26, y % .6 < .3 ? '#a57243' : '#bb8b50');
-    block(x, h + base, z, .58, .44, .58, '#648d20');
+    block(x, h + base, z, .58, .44, .58, '#739332');
     for (let j = 0; j < 7; j++) {
       const angle = j / 7 * Math.PI * 2 + .15;
       const length = .78 + random() * .4;
       for (let k = 0; k < 4; k++) {
         const r = (k + .4) * length / 3;
-        block(x + Math.cos(angle) * r, base + h + .25 - k * k * .065, z + Math.sin(angle) * r, .38, .24, .38, ['#86b922', '#a5ce32', '#6ea222', '#afd535'][(j + k) % 4]);
+        block(x + Math.cos(angle) * r, base + h + .25 - k * k * .065, z + Math.sin(angle) * r, .38, .24, .38, ['#a7c744', '#c3d951', '#88b23d', '#cbdc63'][(j + k) % 4]);
       }
     }
     block(x + .12, h - .14 + base, z + .2, .23, .24, .23, '#906735');
   }
   function bush(x, z, size = .7, flowers = false, y = .1) {
     entity(flowers ? '花坛' : '绿篱', x, z);
-    box(x, y, z, size, .38, size, '#538b37', .26);
+    box(x, y, z, size, .38, size, '#287555', .26);
     for (let i = 0; i < 14; i++) {
       const px = x + (random() - .5) * size, pz = z + (random() - .5) * size;
-      block(px, y + .43+random()*.15, pz, .16, .13, .16, flowers ? ['#f04ca3', '#ff9ab7', '#fff0ce', '#f6bd37'][i % 4] : ['#8ebb30','#a1c93c','#70a331'][i%3]);
+      block(px, y + .43+random()*.15, pz, .16, .13, .16, flowers ? ['#f04ca3', '#ff9ab7', '#fff0ce', '#f6bd37'][i % 4] : ['#4d9e68','#73b886','#378958'][i%3]);
     }
   }
   function planter(x, z, flowers = true) {
@@ -227,7 +227,7 @@ export function createWorld(landmarks = []) {
     curvedRoad([[side*21.2,26],[side*21,17],[side*20.4,8.4],[side*21.3,1],[side*21,-11]],1.9);
     curvedRoad([[side*12.1,25],[side*12.4,19],[side*11.8,13],[side*12.7,6.8],[side*12,-10]],1.8);
   }
-  plaza(0,2.1,2.15);plaza(0,20.4,2.86);plaza(0,-7.1,1.15);
+  plaza(0,12.1,2.15);plaza(0,1.2,2.38);plaza(0,20.4,2.86);plaza(0,-7.1,1.15);
   for (const z of [15.6, 7, -3.5]) for (const x of [-1.7, 1.7]) for (let i = 0; i < 5; i++) block(x, .101, z - .62 + i * .28, .6, .017, .14, '#fff8e5', true);
   // Hollywood's terraced hills, with warmer exposed sandstone faces.
   for (let ix = -29; ix <= 29; ix++) for (let iz = 0; iz < 17; iz++) {
@@ -236,9 +236,9 @@ export function createWorld(landmarks = []) {
     const h = Math.round(hill / .55) * .55;
     if (h > 0) {
       entity('草地与山坡',x,z);
-      for(let yy=.25;yy<=h;yy+=.5)earthBlock(x,yy,z,.835,.49,.746,random()<.32?'#dbb966':'#91ae30');
-      earthBlock(x,h+.12,z,.82,.25,.73,['#83ae29','#9ebc30','#b4ca35','#6b9829'][Math.floor(random()*4)]);
-      if(random()<.27 && Math.abs(x)>5){entity('山坡灌木',x,z);for(let n=0;n<3;n++)block(x+(random()-.5)*.5,h+.4+random()*.25,z+(random()-.5)*.45,.27,.28,.28,['#6a9626','#8cad28','#b9c947'][n]);}
+      for(let yy=.25;yy<=h;yy+=.5)earthBlock(x,yy,z,.835,.49,.746,random()<.32?'#dbb966':'#7f9649');
+      earthBlock(x,h+.12,z,.82,.25,.73,['#84a754','#96b665','#a9c578','#718f43'][Math.floor(random()*4)]);
+      if(random()<.27 && Math.abs(x)>5){entity('山坡灌木',x,z);for(let n=0;n<3;n++)block(x+(random()-.5)*.5,h+.4+random()*.25,z+(random()-.5)*.45,.27,.28,.28,['#448b60','#67a571','#9db85c'][n]);}
     }
   }
   // Curved freeway, built as short bridge spans behind Downtown.
@@ -268,7 +268,7 @@ export function createWorld(landmarks = []) {
   for(const side of [-1,1])for(let i=0;i<4;i++)bush(side*(1.5+i*.68),-18.1,.48,true,3.55);
   // HOLLYWOOD is actual voxel lettering, standing on the hillside.
   const font={H:['10001','10001','10001','11111','10001','10001','10001'],O:['01110','10001','10001','10001','10001','10001','01110'],L:['10000','10000','10000','10000','10000','10000','11111'],Y:['10001','10001','01010','00100','00100','00100','00100'],W:['10001','10001','10001','10101','10101','10101','01010'],D:['11110','10001','10001','10001','10001','10001','11110']};
-  entity('HOLLYWOOD',-10,-21);for(let c=0;c<9;c++){const rows=font['HOLLYWOOD'[c]];for(let y=0;y<7;y++)for(let x=0;x<5;x++)if(rows[y][x]==='1')block(-14.9+(c*6+x)*.14,4.2+(6-y)*.17,-20.7,.142,.172,.21,'#fffbe6');}
+  entity('HOLLYWOOD',0,-14.5);for(let c=0;c<9;c++){const rows=font['HOLLYWOOD'[c]];for(let y=0;y<7;y++)for(let x=0;x<5;x++)if(rows[y][x]==='1')block(-3.64+(c*6+x)*.14,2.54+(6-y)*.2,-14.5,.142,.202,.24,'#fffbe6');block(-3.36+c*.84,2.24,-14.55,.10,.7,.12,'#d8ceaa');}
   for(let i=0;i<30;i++){const x=-24+random()*48,z=-15-random()*10; if(Math.abs(x)<5)continue;palm(x,z,2.2+random(), Math.max(.4,3.5*Math.exp(-(((x+1)/14)**2)-((z+21)/10)**2)));}
   // A small distant skyline, kept behind the playable city.
   for(let i=0;i<19;i++){const x=-28+i*.91,h=1.4+random()*4;block(x,h/2+.3,-25-random()*2,.6+random()*.65,h,.8,'#86b5cd',true);for(let y=1;y<h;y+=.7)block(x,y,-24.5,.66,.12,.06,'#b6d8df',true);}
@@ -326,17 +326,18 @@ export function createWorld(landmarks = []) {
   landmark('pink_swim_ring',-3.9,22.5);
   fountain(-20,23.1,.9);
   // A fully sculpted voxel character based on the supplied frontal reference.
-  entity('自由女神雕像底座',0,2.1);
-  box(0,.1,2.1,2.9,.35,2.5,'#ccc9bc',.31);box(0,.45,2.1,2.6,.5,2.2,'#f3e4cb',.28);box(0,.95,2.1,2.4,.27,2.1,'#aab9bc',.25);
-  landmark('liberty_mascot',0,2.1,1.22);
-  for(let i=0;i<16;i++){const a=i/16*Math.PI*2;bush(Math.cos(a)*1.65,2.1+Math.sin(a)*1.6,.45,true);}
+  entity('自由女神雕像底座',0,12.1);
+  box(0,.1,12.1,2.9,.35,2.5,'#ccc9bc',.31);box(0,.45,12.1,2.6,.5,2.2,'#f3e4cb',.28);box(0,.95,12.1,2.4,.27,2.1,'#aab9bc',.25);
+  landmark('liberty_mascot',0,12.1,1.22);
+  for(let i=0;i<16;i++){const a=i/16*Math.PI*2;bush(Math.cos(a)*1.65,12.1+Math.sin(a)*1.6,.45,true);}
+  landmark('grand_fountain',0,1.2,.1);
   // The starting plaza and its circular flower border.
   for(let i=0;i<42;i++){const a=i/42*Math.PI*2;block(Math.cos(a)*2.8,.14,20.4+Math.sin(a)*2.8,.45,.26,.45,'#f4e4bf',true);if(i%3===0)bush(Math.cos(a)*2.46,20.4+Math.sin(a)*2.46,.46,true);}
   // Street life: cameras, luggage, drinks, surfboards and benches.
   for(let side of [-1,1])for(let z=-1;z<22;z+=4.15){palm(side*3.07,z,2.8+random()*.9);if(z>7)bench(side*3.6,z+1.6);}
   for(let x=-25;x<=25;x+=3.9)for(const z of [-2.05,14.55]){if(Math.abs(x)<4||Math.abs(x-12)<1.5||Math.abs(x+12)<1.5)continue;palm(x,z,2.8+random());}
   for(const [x,z] of [[-10.3,21.6],[10.1,22.2],[-10.2,12.5],[10.3,12.5],[-19.6,9],[20,9],[20.1,22.8],[-5.1,18.8],[5.1,18.8]])planter(x,z);
-  for(const [x,z,c,a] of [[-7,16,'#ed4639',0],[11,7,'#f0c331',0],[-9,-3.5,'#ea6041',0],[.9,11,'#f14638',Math.PI/2],[-21,11,'#2e72c8',Math.PI/2],[22,23,'#e64b3a',0],[12,19,'#f2e8cf',Math.PI/2],[-12,4,'#f0e9d6',Math.PI/2],[21,-1,'#f6d34a',Math.PI/2]])car(x,z,c,a);
+  for(const [x,z,c,a] of [[-7,16,'#ed4639',0],[11,7,'#f0c331',0],[-9,-3.5,'#ea6041',0],[.9,8.3,'#f14638',Math.PI/2],[-21,11,'#2e72c8',Math.PI/2],[22,23,'#e64b3a',0],[12,19,'#f2e8cf',Math.PI/2],[-12,4,'#f0e9d6',Math.PI/2],[21,-1,'#f6d34a',Math.PI/2]])car(x,z,c,a);
   streetSign(-10.5,17.3,'SUNSET BLVD',3.0);streetSign(11.1,16.8,'MELROSE AVE',3);streetSign(19.6,23.3,'LA BREA AVE',3);
   plaza(-5.8,8.5,1.5);
   entity('彩色行李箱',3.9,17.0);for(let j=0;j<3;j++){box(3.9+j*.6,.13,17+j*.42,.48,.66+j*.17,.42,['#f5c741','#df6896','#5081c6'][j],.2);block(3.9+j*.6,.88+j*.17,17+j*.42,.25,.22,.1,'#835f3d');}
@@ -391,5 +392,28 @@ export function createWorld(landmarks = []) {
   label('Los Angeles',26.72,1.4,19.86,1.66,.7,'#fff3df','#418bc7');
   // A large drink cup is one of the first satisfying small-object targets.
   entity('加州冰饮',-3.2,16.7);for(let y=.2;y<1.2;y+=.14){const r=.26+(y-.2)*.09;for(let a=0;a<Math.PI*2;a+=.4)block(-3.2+Math.cos(a)*r,y,16.7+Math.sin(a)*r,.14,.14,.14,y<.5?'#e96549':'#fff1d4');}box(-3.2,1.22,16.7,.74,.1,.72,'#fff5dc',.15);box(-3.1,1.32,16.7,.08,.75,.08,'#6cbfba',.1);
+  // Fill the open lots with independently consumable lawn tiles; keep every paved footprint clear.
+  const lawnStep=.42,columns=Math.floor(56/lawnStep),rows=Math.floor(51/lawnStep),occupied=new Uint8Array(columns*rows);
+  function reserveGround(b){
+    const co=Math.cos(b.rotation||0),si=Math.sin(b.rotation||0),hw=b.sx/2+.18,hd=b.sz/2+.18;
+    const ex=Math.abs(co)*hw+Math.abs(si)*hd,ez=Math.abs(si)*hw+Math.abs(co)*hd;
+    const minX=Math.max(0,Math.floor((b.x-ex+28)/lawnStep)),maxX=Math.min(columns-1,Math.ceil((b.x+ex+28)/lawnStep));
+    const minZ=Math.max(0,Math.floor((b.z-ez+25.5)/lawnStep)),maxZ=Math.min(rows-1,Math.ceil((b.z+ez+25.5)/lawnStep));
+    for(let iz=minZ;iz<=maxZ;iz++)for(let ix=minX;ix<=maxX;ix++){
+      const dx=-28+(ix+.5)*lawnStep-b.x,dz=-25.5+(iz+.5)*lawnStep-b.z;
+      if(Math.abs(dx*co-dz*si)<hw&&Math.abs(dx*si+dz*co)<hd)occupied[iz*columns+ix]=1;
+    }
+  }
+  for(const b of terrain)if(b.y+b.sy/2>.06)reserveGround(b);
+  for(const b of blocks)if(b.y-b.sy/2<.48)reserveGround(b);
+  for(let pz=0;pz<rows;pz+=5)for(let px=0;px<columns;px+=5){
+    let opened=false;
+    for(let iz=pz;iz<Math.min(rows,pz+5);iz++)for(let ix=px;ix<Math.min(columns,px+5);ix++){
+      if(occupied[iz*columns+ix])continue;
+      const x=-28+(ix+.5)*lawnStep,z=-25.5+(iz+.5)*lawnStep;
+      if(!opened){entity('城市草坪',x,z);opened=true;}
+      earthBlock(x,.022,z,.417,.052,.417,['#4d9c32','#509f34','#4b9931'][(ix*7+iz*11)%3]);
+    }
+  }
   return { blocks, terrain, signs, entities, palette: P };
 }
