@@ -1,4 +1,5 @@
-export const LEVELS = [0, 100, 450, 1300, 3200, 7000, 13000, 22000];
+export const LEVELS = [0, 300, 1500, 4500, 10500, 24000, 50000, 100000, 180000];
+export const RADII = [1.12, 1.52, 2.08, 2.78, 3.66, 4.78, 6.18, 7.85, 9.8];
 
 export class Simulation {
   constructor(world) {
@@ -7,6 +8,7 @@ export class Simulation {
     this.active = [];
     this.count = 0;
     this.time = 0;
+    this.level = 1;
     this.hole = { x: 0, z: 20.4, radius: 1.12 };
     world.blocks.forEach((b, i) => {
       b.ox = b.x; b.oy = b.y; b.oz = b.z; b.state = 0;
@@ -33,9 +35,11 @@ export class Simulation {
     // A spatial index releases the columns touching the aperture, bottom first.
     for(let gx=Math.floor((hx-r)*2);gx<=Math.floor((hx+r)*2);gx++) for(let gz=Math.floor((hz-r)*2);gz<=Math.floor((hz+r)*2);gz++) {
       const ids=this.grid.get(`${gx},${gz}`); if(!ids)continue;
-      for(const i of ids){const b=this.world.blocks[i];if(b.state)continue;const d2=(b.x-hx)**2+(b.z-hz)**2;
+      let hasIdle=false;
+      for(const i of ids){const b=this.world.blocks[i];if(b.state)continue;hasIdle=true;const d2=(b.x-hx)**2+(b.z-hz)**2;
         if(d2<r2*.93)this.release(i,.025+Math.max(0,b.y-.3)*.07+((i*7)%13)*.007);
       }
+      if(!hasIdle)this.grid.delete(`${gx},${gz}`);
     }
     // Unsupported structures progressively collapse; loose pieces remain physical.
     for(const e of this.world.entities){
@@ -49,6 +53,7 @@ export class Simulation {
       b.state=2;
       const dx=hx-b.x,dz=hz-b.z,d=Math.hypot(dx,dz),inside=d<r*.99||b.sinking;
       const influence=Math.max(0,1-d/(r+2.5));
+      if(!inside&&influence===0&&b.y<=b.sy*.48+.131&&Math.abs(b.vx)+Math.abs(b.vy)+Math.abs(b.vz)<.03)continue;
       if(inside || influence>0){const accel=inside?10:12*influence;b.vx+=(dx/(d+.12)*accel-b.vx*2.3)*dt;b.vz+=(dz/(d+.12)*accel-b.vz*2.3)*dt;}
       else {b.vx*=Math.exp(-dt*5);b.vz*=Math.exp(-dt*5);}
       b.vy-=18*dt;
@@ -62,13 +67,15 @@ export class Simulation {
       }
       onChange?.(i,b);
     }
-    const target=1.12+Math.min(3.3,Math.sqrt(this.count)*.024);
-    this.hole.radius+=(target-this.hole.radius)*Math.min(1,dt*3);
+    // Radius changes on the threshold-crossing frame; no continuous growth drift.
+    while(this.level<LEVELS.length&&this.count>=LEVELS[this.level])this.level++;
+    this.hole.radius=RADII[this.level-1];
   }
   reset(onChange) {
-    this.active.length=0;this.count=0;this.time=0;
+    this.active.length=0;this.count=0;this.time=0;this.level=1;
     this.hole.x=0;this.hole.z=20.4;this.hole.radius=1.12;
-    this.world.blocks.forEach((b,i)=>{b.x=b.ox;b.y=b.oy;b.z=b.oz;b.vx=b.vy=b.vz=b.rx=b.rz=0;b.state=0;b.sinking=false;onChange?.(i,b);});
+    this.grid.clear();
+    this.world.blocks.forEach((b,i)=>{b.x=b.ox;b.y=b.oy;b.z=b.oz;b.vx=b.vy=b.vz=b.rx=b.rz=0;b.state=0;b.sinking=false;const key=`${Math.floor(b.x*2)},${Math.floor(b.z*2)}`;if(!this.grid.has(key))this.grid.set(key,[]);this.grid.get(key).push(i);onChange?.(i,b);});
     for(const e of this.world.entities){e.collapsing=false;e.released=0;}
   }
 }
