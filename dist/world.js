@@ -24,6 +24,14 @@ export function createWorld(landmarks = []) {
       block(x - w / 2 + (ix + .5) * w / nx, y + (iy + .5) * h / ny, z - d / 2 + (iz + .5) * d / nz, w / nx * .975, h / ny * .975, d / nz * .975, color, fixed);
     }
   }
+  function earthBlock(x,y,z,sx,sy,sz,color){
+    // Turf and hillside soil are persistent, consumable chunks, grouped by small ground patches.
+    const nx=Math.max(1,Math.round(sx/.24)),ny=Math.max(1,Math.round(sy/.24)),nz=Math.max(1,Math.round(sz/.24)),shade=.96+random()*.07;
+    for(let ix=0;ix<nx;ix++)for(let iy=0;iy<ny;iy++)for(let iz=0;iz<nz;iz++){
+      const b={x:x-sx/2+(ix+.5)*sx/nx,y:y-sy/2+(iy+.5)*sy/ny,z:z-sz/2+(iz+.5)*sz/nz,sx:sx/nx*.982,sy:sy/ny*.982,sz:sz/nz*.982,color,rotation:0,shade:shade+.018*Math.sin(ix*13+iy*17+iz*7),entity:current};
+      entities[current].ids.push(blocks.length);blocks.push(b);
+    }
+  }
   function label(text, x, y, z, w, h, fg = '#fff9e5', bg = '#21633c', fixed = false) {
     const i = signs.length; signs.push({ text, x, y, z, w, h, fg, bg, entity: fixed ? -1 : current });
     if (!fixed) entities[current].signIds.push(i);
@@ -227,8 +235,9 @@ export function createWorld(landmarks = []) {
     const hill = Math.max(0, 4.3 * Math.exp(-(((x + 1) / 13) ** 2) - ((z + 21) / 9) ** 2) + 1.6 * Math.exp(-(((x - 20) / 6) ** 2)) - .6 + random() * .6);
     const h = Math.round(hill / .55) * .55;
     if (h > 0) {
-      for(let yy=.25;yy<=h;yy+=.5)block(x,yy,z,.835,.49,.746,random()<.32?'#dbb966':'#91ae30',true);
-      block(x,h+.12,z,.82,.25,.73,['#83ae29','#9ebc30','#b4ca35','#6b9829'][Math.floor(random()*4)],true);
+      entity('草地与山坡',x,z);
+      for(let yy=.25;yy<=h;yy+=.5)earthBlock(x,yy,z,.835,.49,.746,random()<.32?'#dbb966':'#91ae30');
+      earthBlock(x,h+.12,z,.82,.25,.73,['#83ae29','#9ebc30','#b4ca35','#6b9829'][Math.floor(random()*4)]);
       if(random()<.27 && Math.abs(x)>5){entity('山坡灌木',x,z);for(let n=0;n<3;n++)block(x+(random()-.5)*.5,h+.4+random()*.25,z+(random()-.5)*.45,.27,.28,.28,['#6a9626','#8cad28','#b9c947'][n]);}
     }
   }
@@ -316,21 +325,10 @@ export function createWorld(landmarks = []) {
   landmark('gold_sunglasses',3.7,17.6);
   landmark('pink_swim_ring',-3.9,22.5);
   fountain(-20,23.1,.9);
-  // Purple liberty mascot, created entirely from cubes, facing the player.
-  entity('自由女神主题雕塑',0,2.1);
-  box(0,.1,2.1,2.5,.35,2.4,'#ccc9bc',.31);box(0,.45,2.1,2.0,.5,1.9,'#f3e4cb',.28);box(0,.95,2.1,1.7,.27,1.6,'#aab9bc',.25);
-  ellipsoid(0,2.44,2.1,1.0,1.27,.68,'#8044bd',.23);
-  ellipsoid(0,3.74,2.18,1.07,.85,.73,'#9950d0',.23);
-  for(const side of [-1,1]){ellipsoid(side*.92,2.65,2.1,.42,.69,.39,'#8741bd',.22);box(side*.44,1.2,2.28,.48,.4,.62,'#9155c8',.22);}
-  // Draped turquoise robe as stepped diagonal bands.
-  for(let j=0;j<9;j++)for(let i=0;i<8;i++){const x=-.89+i*.235,y=1.63+j*.185+i*.065;if(y<3.5)block(x,y,2.73,.237,.175,.14,(j%3===0)?'#42c89c':'#68d5ae');}
-  for(const side of [-1,1]){box(side*.4,3.83,2.85,.46,.3,.1,'#fff7e5',.14);box(side*.39,3.83,2.93,.18,.23,.08,'#2c2047',.09);box(side*.41,4.14,2.92,.51,.12,.12,'#5c289a',.12);}
-  box(0,3.36,2.88,.81,.24,.08,'#45205e',.15);for(let i=0;i<4;i++)block(-.3+i*.2,3.4,2.95,.13,.16,.08,'#fff5da');
-  for(let i=-4;i<=4;i++){block(i*.22,4.4,2.16,.22,.22,.94,'#53c6af');const spike= .8-Math.abs(i)*.095;for(let j=0;j<4;j++)block(i*.24*(1+j*.12),4.53+j*spike/4,2.15,.14,.21,.2,'#64dbbf');}
-  // The reference's striped soft-serve torch and longer fanned crown spikes.
-  box(-1.12,2.9,2.08,.32,1.48,.34,'#9951cf',.2);box(-1.14,4.26,2.09,.29,.85,.28,'#77d6c0',.18);box(-1.14,5.06,2.09,.59,.22,.55,'#55b99e',.2);
-  for(let y=0;y<8;y++){const r=.34-y*.035;for(let a=0;a<Math.PI*2;a+=.35)block(-1.14+Math.cos(a+y)*r,5.25+y*.11,2.09+Math.sin(a+y)*r,.12,.12,.12,['#218dcf','#fff7dc','#ed514d','#fff7dc'][Math.floor(y/2)]);}
-  for(let i=-3;i<=3;i++)for(let j=0;j<8;j++)block(i*.26*(1+j*.2),4.56+j*.13*(1-Math.abs(i)*.12),2.17,.11,.15,.14,'#69d7bc');
+  // A fully sculpted voxel character based on the supplied frontal reference.
+  entity('自由女神雕像底座',0,2.1);
+  box(0,.1,2.1,2.9,.35,2.5,'#ccc9bc',.31);box(0,.45,2.1,2.6,.5,2.2,'#f3e4cb',.28);box(0,.95,2.1,2.4,.27,2.1,'#aab9bc',.25);
+  landmark('liberty_mascot',0,2.1,1.22);
   for(let i=0;i<16;i++){const a=i/16*Math.PI*2;bush(Math.cos(a)*1.65,2.1+Math.sin(a)*1.6,.45,true);}
   // The starting plaza and its circular flower border.
   for(let i=0;i<42;i++){const a=i/42*Math.PI*2;block(Math.cos(a)*2.8,.14,20.4+Math.sin(a)*2.8,.45,.26,.45,'#f4e4bf',true);if(i%3===0)bush(Math.cos(a)*2.46,20.4+Math.sin(a)*2.46,.46,true);}

@@ -1,3 +1,5 @@
+import {MAP_EDGES,movementBounds} from './movement.js';
+
 export const LEVELS = [0, 300, 1500, 4500, 10500, 24000, 50000, 100000, 180000];
 export const RADII = [1.12, 1.52, 2.08, 2.78, 3.66, 4.78, 6.18, 7.85, 9.8];
 
@@ -32,11 +34,20 @@ export class Simulation {
     this.time += dt;
     const {x: hx, z: hz, radius: r} = this.hole;
     const r2 = r * r;
+    const limits=movementBounds(r),wallX=hx<=limits.minX+.04?-1:hx>=limits.maxX-.04?1:0,wallZ=hz<=limits.minZ+.04?-1:hz>=limits.maxZ-.04?1:0;
+    // At an air wall, pull the stranded edge strip inward; it still falls only over the real aperture.
+    const captureDistance2=(x,z)=>{
+      const px=wallX<0?Math.max(x,limits.minX):wallX>0?Math.min(x,limits.maxX):x;
+      const pz=wallZ<0?Math.max(z,limits.minZ):wallZ>0?Math.min(z,limits.maxZ):z;
+      return (px-hx)**2+(pz-hz)**2;
+    };
+    const scanMinX=wallX<0?MAP_EDGES.minX-1.5:hx-r,scanMaxX=wallX>0?MAP_EDGES.maxX+1.5:hx+r;
+    const scanMinZ=wallZ<0?MAP_EDGES.minZ-1.5:hz-r,scanMaxZ=wallZ>0?MAP_EDGES.maxZ+1.5:hz+r;
     // A spatial index releases the columns touching the aperture, bottom first.
-    for(let gx=Math.floor((hx-r)*2);gx<=Math.floor((hx+r)*2);gx++) for(let gz=Math.floor((hz-r)*2);gz<=Math.floor((hz+r)*2);gz++) {
+    for(let gx=Math.floor(scanMinX*2);gx<=Math.floor(scanMaxX*2);gx++) for(let gz=Math.floor(scanMinZ*2);gz<=Math.floor(scanMaxZ*2);gz++) {
       const ids=this.grid.get(`${gx},${gz}`); if(!ids)continue;
       let hasIdle=false;
-      for(const i of ids){const b=this.world.blocks[i];if(b.state)continue;hasIdle=true;const d2=(b.x-hx)**2+(b.z-hz)**2;
+      for(const i of ids){const b=this.world.blocks[i];if(b.state)continue;hasIdle=true;const d2=captureDistance2(b.x,b.z);
         if(d2<r2*.93)this.release(i,.025+Math.max(0,b.y-.3)*.07+((i*7)%13)*.007);
       }
       if(!hasIdle)this.grid.delete(`${gx},${gz}`);
@@ -52,7 +63,7 @@ export class Simulation {
       if(this.time<b.releaseAt)continue;
       b.state=2;
       const dx=hx-b.x,dz=hz-b.z,d=Math.hypot(dx,dz),inside=d<r*.99||b.sinking;
-      const influence=Math.max(0,1-d/(r+2.5));
+      const influence=Math.max(0,1-Math.sqrt(captureDistance2(b.x,b.z))/(r+2.5));
       if(!inside&&influence===0&&b.y<=b.sy*.48+.131&&Math.abs(b.vx)+Math.abs(b.vy)+Math.abs(b.vz)<.03)continue;
       if(inside || influence>0){const accel=inside?10:12*influence;b.vx+=(dx/(d+.12)*accel-b.vx*2.3)*dt;b.vz+=(dz/(d+.12)*accel-b.vz*2.3)*dt;}
       else {b.vx*=Math.exp(-dt*5);b.vz*=Math.exp(-dt*5);}

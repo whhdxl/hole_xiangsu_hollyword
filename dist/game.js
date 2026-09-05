@@ -2,6 +2,7 @@ import * as THREE from './vendor/three.module.js';
 import {createWorld} from './world.js';
 import {Simulation} from './physics.js';
 import {CAMERA_FOV,CAMERA_PITCH,CAMERA_SPANS,followPose} from './camera-rig.js';
+import {movementScale,clampHolePosition,moveHole} from './movement.js';
 
 const $ = id => document.getElementById(id);
 let renderer;
@@ -129,7 +130,7 @@ function initialize(landmarks){
   function begin(){overview=false;if(started)return;started=true;openingTime=visualTime;clearTimeout(hintTimer);hintTimer=setTimeout(()=>$('hint').classList.add('subtle'),1700);}
   function releasePointer(e){if(e&&e.pointerId!==activePointerId)return;dragging=false;dragStart=null;activePointerId=null;$('scene').classList.remove('dragging');}
   $('scene').addEventListener('pointerdown',e=>{if(paused||dragging||!e.isPrimary||e.button>0)return;const p=pointerWorld(e);if(!p)return;dragging=true;activePointerId=e.pointerId;begin();$('scene').focus({preventScroll:true});$('scene').setPointerCapture(e.pointerId);$('scene').classList.add('dragging');dragStart={clientX:e.clientX,clientY:e.clientY};});
-  $('scene').addEventListener('pointermove',e=>{if(!dragging||paused||e.pointerId!==activePointerId)return;const p=pointerWorld(e),previous=pointerWorld(dragStart);if(!p||!previous)return;targetX=THREE.MathUtils.clamp(targetX+p.x-previous.x,-27,27);targetZ=THREE.MathUtils.clamp(targetZ+p.z-previous.z,-24,24);dragStart={clientX:e.clientX,clientY:e.clientY};});
+  $('scene').addEventListener('pointermove',e=>{if(!dragging||paused||e.pointerId!==activePointerId)return;const p=pointerWorld(e),previous=pointerWorld(dragStart);if(!p||!previous)return;const scale=movementScale(sim.level),target=clampHolePosition(targetX+(p.x-previous.x)*scale,targetZ+(p.z-previous.z)*scale,sim.hole.radius);targetX=target.x;targetZ=target.z;dragStart={clientX:e.clientX,clientY:e.clientY};});
   $('scene').addEventListener('pointerup',releasePointer);$('scene').addEventListener('pointercancel',releasePointer);$('scene').addEventListener('lostpointercapture',releasePointer);
   $('scene').addEventListener('wheel',e=>{e.preventDefault();setZoom(zoom*Math.exp(-e.deltaY*.001));},{passive:false});
   function togglePause(){paused=!paused;$('paused').hidden=!paused;$('pause').setAttribute('aria-pressed',String(paused));$('pause').setAttribute('aria-label',paused?'继续游戏':'暂停游戏');$('pause-icon').setAttribute('d',paused?'M8 4 19 12 8 20Z':'M8 5v14M16 5v14');releasePointer();keys.clear();}
@@ -167,11 +168,10 @@ function initialize(landmarks){
     if(!paused&&!document.hidden){
       visualTime+=dt;const frozen=Math.min(hitStop,dt),simulationDt=dt-frozen;hitStop-=frozen;
       let mx=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0),mz=(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('w')||keys.has('arrowup')?1:0);
-      if(mx||mz){const n=Math.hypot(mx,mz);targetX=THREE.MathUtils.clamp(targetX+mx/n*dt*9,-27,27);targetZ=THREE.MathUtils.clamp(targetZ+mz/n*dt*9,-24,24);}
-      const dx=targetX-sim.hole.x,dz=targetZ-sim.hole.z,dist=Math.hypot(dx,dz),step=Math.min(dist,simulationDt*18);
-      if(dist>.0001){sim.hole.x+=dx/dist*step;sim.hole.z+=dz/dist*step;}
+      if(mx||mz){const n=Math.hypot(mx,mz),speed=9*movementScale(sim.level),target=clampHolePosition(targetX+mx/n*simulationDt*speed,targetZ+mz/n*simulationDt*speed,sim.hole.radius);targetX=target.x;targetZ=target.z;}
+      const target=moveHole(sim.hole,targetX,targetZ,simulationDt,sim.level);targetX=target.x;targetZ=target.z;
       // Waiting before the first gesture lets the full composition remain intact.
-      if(started&&simulationDt>0){sim.tick(simulationDt,transform,playPop);if(dirtyBatches.size){flushVoxels();shadowDirty=true;}}
+      if(started&&simulationDt>0){sim.tick(simulationDt,transform,playPop);const position=clampHolePosition(sim.hole.x,sim.hole.z,sim.hole.radius);sim.hole.x=position.x;sim.hole.z=position.z;const target=clampHolePosition(targetX,targetZ,sim.hole.radius);targetX=target.x;targetZ=target.z;if(dirtyBatches.size){flushVoxels();shadowDirty=true;}}
       world.signs.forEach((s,i)=>{if(s.entity>=0)signMeshes[i].visible=!world.entities[s.entity].collapsing;});
       updateHUD();
       updateCamera(dt);
