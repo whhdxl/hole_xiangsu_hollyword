@@ -1,6 +1,6 @@
 import * as THREE from './vendor/three.module.js';
 import {createWorld} from './world.js';
-import {Simulation,LEVELS} from './physics.js';
+import {Simulation,LEVELS,RADII} from './physics.js';
 import {VoxelBatches} from './voxel-batches.js';
 import {CAMERA_FOV,CAMERA_PITCH,CAMERA_SPANS,followPose} from './camera-rig.js';
 import {movementScale,clampHolePosition,moveHole} from './movement.js';
@@ -96,7 +96,7 @@ function initialize(landmarks){
   const whiteRim=new THREE.Mesh(new THREE.RingGeometry(.945,1.078,80),new THREE.MeshBasicMaterial({color:'#ffffff',side:THREE.DoubleSide,toneMapped:false}));whiteRim.rotation.x=-Math.PI/2;whiteRim.position.y=.105;aperture.add(whiteRim);
   ring(1.083,.015,.1,'#20251b');ring(.945,.018,.093,'#161914');ring(.918,.015,-.08,'#aaa296');ring(.872,.024,-.43,'#33322f');
   const halo=new THREE.Mesh(new THREE.PlaneGeometry(4.8,4.8),new THREE.ShaderMaterial({uniforms:{strength:{value:.22}},vertexShader:'varying vec2 glowUV; void main(){glowUV=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',fragmentShader:'varying vec2 glowUV; uniform float strength; void main(){float r=length(glowUV-.5)*4.8;float a=exp(-pow((r-1.03)/.54,2.0))*strength*smoothstep(.94,1.06,r);gl_FragColor=vec4(1.0,.88,.25,a);}',transparent:true,side:THREE.DoubleSide,depthWrite:false}));halo.rotation.x=-Math.PI/2;halo.position.y=.061;aperture.add(halo);
-  const upgradeRings=[1,1.055].map((n,i)=>{const m=new THREE.Mesh(new THREE.RingGeometry(1,1.045,80),new THREE.MeshBasicMaterial({color:i?'#fff8cd':'#ffdf62',transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false,toneMapped:false}));m.rotation.x=-Math.PI/2;scene.add(m);return m;});
+  const upgradeRings=[0,1].map(i=>{const m=new THREE.Mesh(new THREE.RingGeometry(1,1.08,80),new THREE.MeshBasicMaterial({color:i?'#fff8cd':'#ffc632',transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false,toneMapped:false}));m.rotation.x=-Math.PI/2;scene.add(m);return m;});
   const arrowGeometry=new THREE.BufferGeometry();arrowGeometry.setAttribute('position',new THREE.Float32BufferAttribute([-.35,0,.27,.35,0,.27,0,0,-.45],3));arrowGeometry.computeVertexNormals();
   const directionArrow=new THREE.Mesh(arrowGeometry,new THREE.MeshBasicMaterial({color:'#ffdf65',side:THREE.DoubleSide,toneMapped:false}));scene.add(directionArrow);
   let directionX=0,directionZ=-1,previousHoleX=sim.hole.x,previousHoleZ=sim.hole.z;
@@ -104,8 +104,8 @@ function initialize(landmarks){
   const sizeLabel=new THREE.Sprite(new THREE.SpriteMaterial({map:sizeTexture,depthTest:false,depthWrite:false,toneMapped:false}));sizeLabel.renderOrder=9;scene.add(sizeLabel);
   function updateSizeLabel(){sizeContext.clearRect(0,0,512,128);sizeContext.font='900 85px Arial';sizeContext.textAlign='center';sizeContext.textBaseline='middle';sizeContext.lineJoin='round';sizeContext.strokeStyle='#263d35';sizeContext.lineWidth=10;sizeContext.strokeText(`Size ${sim.level}`,256,67);sizeContext.fillStyle='#fff';sizeContext.fillText(`Size ${sim.level}`,256,67);sizeTexture.needsUpdate=true;}
   updateSizeLabel();
-  const upgradeCanvas=document.createElement('canvas');upgradeCanvas.width=1024;upgradeCanvas.height=256;const uc=upgradeCanvas.getContext('2d');uc.textAlign='center';uc.textBaseline='middle';uc.font='italic 900 150px Arial';uc.lineJoin='round';uc.strokeStyle='#435743';uc.lineWidth=11;uc.strokeText('Size Up!',512,120);uc.fillStyle='#fffdef';uc.fillText('Size Up!',512,120);const upgradeTexture=new THREE.CanvasTexture(upgradeCanvas);upgradeTexture.colorSpace=THREE.SRGBColorSpace;
-  const sizeUpSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:upgradeTexture,transparent:true,depthTest:false,depthWrite:false}));sizeUpSprite.renderOrder=10;sizeUpSprite.visible=false;scene.add(sizeUpSprite);
+  const upgradeCanvas=document.createElement('canvas');upgradeCanvas.width=1024;upgradeCanvas.height=256;const uc=upgradeCanvas.getContext('2d');uc.textAlign='center';uc.textBaseline='middle';uc.font='italic 900 150px Arial';uc.lineJoin='round';uc.strokeStyle='#ffc632';uc.lineWidth=24;uc.strokeText('Size Up!',512,120);uc.strokeStyle='#344b36';uc.lineWidth=12;uc.strokeText('Size Up!',512,120);uc.fillStyle='#fffdef';uc.fillText('Size Up!',512,120);const upgradeTexture=new THREE.CanvasTexture(upgradeCanvas);upgradeTexture.colorSpace=THREE.SRGBColorSpace;
+  const sizeUpSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:upgradeTexture,transparent:true,depthTest:false,depthWrite:false,toneMapped:false}));sizeUpSprite.renderOrder=10;sizeUpSprite.visible=false;scene.add(sizeUpSprite);
   const burstPositions=new Float32Array(72*3),burstGeometry=new THREE.BufferGeometry();burstGeometry.setAttribute('position',new THREE.BufferAttribute(burstPositions,3));const burst=new THREE.Points(burstGeometry,new THREE.PointsMaterial({color:'#fff5a3',size:.14,transparent:true,opacity:0,depthWrite:false}));burst.frustumCulled=false;scene.add(burst);
   // Follow at every screen size. Upgrades change height, distance and visible area.
   let zoom=1,width=innerWidth,height=innerHeight,paused=false,dragging=false,started=false,soundOn=false;
@@ -171,13 +171,17 @@ function initialize(landmarks){
       updateCamera(dt);
     }
     holeUniform.set(sim.hole.x,sim.hole.z,sim.hole.radius);
-    const up=visualTime-upgradeTime,pop=up>=0&&up<.24?Math.sin(up/.24*Math.PI)*.11:0,displayRadius=sim.hole.radius*(1+pop);
+    // Slow only upgrade playback through Size 10. Movement and falling keep their real timestep.
+    const effectSpeed=sim.level<=10?.75:1,up=(visualTime-upgradeTime)*effectSpeed;
+    const effectRadius=Math.max(sim.hole.radius,RADII[9]);
+    const pop=up>=0&&up<.24?Math.sin(up/.24*Math.PI)*.11:0,displayRadius=sim.hole.radius*(1+pop);
     aperture.position.set(sim.hole.x,0,sim.hole.z);aperture.scale.set(displayRadius,1,displayRadius);holeUniform.z=displayRadius;
     halo.material.uniforms.strength.value=.22+(up>=0&&up<.85?Math.sin(up/.85*Math.PI)*.52:0);
-    for(let i=0;i<upgradeRings.length;i++){const age=up-i*.11,m=upgradeRings[i];m.visible=age>=0&&age<.78;m.material.opacity=m.visible?(1-age/.78)*.9:0;m.position.set(sim.hole.x,.19+i*.025,sim.hole.z);m.scale.setScalar(sim.hole.radius*(1+Math.max(0,age)*1.55));}
-    sizeUpSprite.visible=up>=0&&up<.87;sizeUpSprite.material.opacity=Math.min(1,Math.max(0,(.87-up)/.25));sizeUpSprite.position.set(sim.hole.x,sim.hole.radius*.76+1.1+up*.6,sim.hole.z-.15);sizeUpSprite.scale.set(sim.hole.radius*3.1*(1+pop),sim.hole.radius*.775*(1+pop),1);
+    for(let i=0;i<upgradeRings.length;i++){const age=up-i*.11,m=upgradeRings[i];m.visible=age>=0&&age<.78;m.material.opacity=m.visible?(1-age/.78)*.98:0;m.position.set(sim.hole.x,.19+i*.025,sim.hole.z);m.scale.setScalar(effectRadius*(1+Math.max(0,age)*1.55));}
+    const bannerWidth=Math.max(7.2,sim.hole.radius*3.35)*(1+pop);
+    sizeUpSprite.visible=up>=0&&up<.87;sizeUpSprite.material.opacity=Math.min(1,Math.max(0,(.87-up)/.25));sizeUpSprite.position.set(sim.hole.x,sim.hole.radius*.76+1.1+up*.6,sim.hole.z-.15);sizeUpSprite.scale.set(bannerWidth,bannerWidth/4,1);
     burst.visible=up>=0&&up<.7;
-    if(burst.visible){burst.material.opacity=1-up/.7;for(let i=0;i<72;i++){const a=i/72*Math.PI*2,r=sim.hole.radius*(1+up*(1.4+(i%4)*.16));burstPositions[i*3]=sim.hole.x+Math.cos(a)*r;burstPositions[i*3+1]=.25+Math.sin(up/.7*Math.PI)*(.4+i%5*.18);burstPositions[i*3+2]=sim.hole.z+Math.sin(a)*r;}burstGeometry.attributes.position.needsUpdate=true;}
+    if(burst.visible){burst.material.opacity=1-up/.7;for(let i=0;i<72;i++){const a=i/72*Math.PI*2,r=effectRadius*(1+up*(1.4+(i%4)*.16));burstPositions[i*3]=sim.hole.x+Math.cos(a)*r;burstPositions[i*3+1]=.25+Math.sin(up/.7*Math.PI)*(.4+i%5*.18);burstPositions[i*3+2]=sim.hole.z+Math.sin(a)*r;}burstGeometry.attributes.position.needsUpdate=true;}
     const travelX=sim.hole.x-previousHoleX,travelZ=sim.hole.z-previousHoleZ,travel=Math.hypot(travelX,travelZ);if(travel>.002){directionX=travelX/travel;directionZ=travelZ/travel;}previousHoleX=sim.hole.x;previousHoleZ=sim.hole.z;
     directionArrow.position.set(sim.hole.x+directionX*displayRadius*1.48,.2,sim.hole.z+directionZ*displayRadius*1.48);directionArrow.rotation.y=Math.atan2(-directionX,-directionZ);directionArrow.scale.setScalar(displayRadius*.48);
     sizeLabel.position.set(sim.hole.x,.16,sim.hole.z+displayRadius*1.46);sizeLabel.scale.set(displayRadius*1.86,displayRadius*.465,1);

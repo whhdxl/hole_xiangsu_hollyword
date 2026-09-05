@@ -1,6 +1,7 @@
 import {MAP_EDGES,movementBounds} from './movement.js';
 
-export const LEVELS = [0,250,900,2000,3600,5800,8800,12800,18000,25000,34000,46000,61000,80000,103000,131000,165000,205000,252000,310000];
+// The former Size 10 budget now reaches Size 8; the remaining budget spans twelve upgrades.
+export const LEVELS = [0,400,1500,3400,6200,10500,16500,25000,32500,42000,53500,67300,83800,103000,126300,153700,185000,220700,261700,310000];
 export const RADII = Array.from({length:20},(_,i)=>i===19?9.8:1.12*Math.pow(9.8/1.12,i/19));
 const gridKey=(x,z)=>(x+128)*512+z+128;
 

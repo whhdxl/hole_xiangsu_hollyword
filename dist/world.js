@@ -272,6 +272,10 @@ export function createWorld(landmarks = []) {
   for(let layer=0;layer<7;layer++)earthBlock(0,2.28+layer*.20,-14.7,9.8-layer*.11,.20,2.15-layer*.11,layer%2?'#567b45':'#6c8950');
   earthBlock(0,3.61,-14.7,9.0,.16,1.48,'#2f6845');
   entity('HOLLYWOOD',0,-14.5);
+  // A dark pine backing keeps the ivory glyphs distinct from the observatory behind them.
+  box(0,3.69,-14.88,9.16,2.44,.40,'#173d35',.145,true);
+  for(const x of [-4.62,4.62])box(x,3.65,-14.89,.10,2.52,.44,'#bd9c58',.1);
+  for(const y of [3.69,6.10])block(0,y,-14.66,9.25,.07,.07,'#cfb66e');
   const letterStep=8.6/53,letterRow=2/7;
   for(let c=0;c<9;c++){
     const rows=font['HOLLYWOOD'[c]];
@@ -301,7 +305,7 @@ export function createWorld(landmarks = []) {
   box(-16.4,4.5,-6.5,1.5,1.15,1.45,'#d8af62',.25,true);
   box(-16.4,5.65,-6.5,1.6,.18,1.5,'#f0d095',.25);
   function filmCamera(x,z){entity('电影摄影机',x,z);for(let a=0;a<3;a++){const theta=a/3*Math.PI*2;for(let j=0;j<6;j++)block(x+Math.cos(theta)*(.6-j*.085),.15+j*.2,z+Math.sin(theta)*(.6-j*.085),.13,.23,.13,'#333a35');}box(x,1.25,z,.86,.5,.48,'#343b36',.2);for(const s of [-1,1])ellipsoid(x+s*.28,1.94,z,.34,.34,.19,'#252e2c',.15);block(x,1.5,z+.43,.42,.35,.38,'#252e2b');for(const s of [-1,1])block(x+s*.28,1.94,z+.2,.14,.14,.045,'#9eaa9d');}
-  filmCamera(-5.8,-.8);filmCamera(5.8,-.8);
+  landmark('studio_camera',-8.05,3.1,.1);filmCamera(5.8,-.8);
   // Tennis club and shopping district.
   shop(16.3,-6.0,5.3,3.5,2.6,'LOS ANGELES CLUB','#e3c993','#cf7044');
   entity('屋顶网球场',16.3,-6);box(16.3,3.16,-6,4.7,.15,2.8,'#2f9981',.33);
@@ -385,7 +389,7 @@ export function createWorld(landmarks = []) {
   block(16.8,8.2,-23.7,.08,1.05,.08,'#f6f4e7');
   streetSign(17.3,-15.9,'Griffith Park · Trails',3.0);
   // Studio equipment, production trucks and the original clapboard prop.
-  entity('影棚场记板',-12.7,-.2);box(-12.7,.18,-.2,.94,.8,.17,'#292e2c',.16);for(let i=0;i<7;i++)block(-13.1+i*.13,1.04,-.2,.125,.18,.17,i%2?'#fff4d8':'#333732');label('SCENE 07',-12.7,.66,-.102,.75,.36,'#fff1d5','#282c29');
+  landmark('studio_clapper',-10.45,4.9,.12);
   for(const [x,z] of [[-19.7,-3.6],[-22.7,-3.6]]){entity('电影制作车辆',x,z);box(x,.32,z,2.3,1.12,.92,'#eee6d5',.23,true);block(x+.83,.98,z+.47,.56,.5,.06,'#517b8d');for(const dx of [-.76,.76])for(const side of [-1,1])block(x+dx,.31,z+side*.48,.4,.4,.18,'#303b39');box(x+.2,1.45,z,.63,.14,.69,'#fff4d9',.2);}
   // Tennis mesh and rooftop umbrellas.
   entity('网球场围网',16.3,-6);
