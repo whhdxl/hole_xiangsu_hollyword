@@ -16,7 +16,7 @@
       <a class="brand" href="./" aria-label="Voxel Escape 首页"><span class="brand-icon"><i></i><i></i><i></i></span><span>VOXEL<span class="brand-light"> ESCAPE</span></span></a>
       <div class="location"><span class="sun">☀</span> LOS ANGELES <span class="separator"></span><span>城市巡游</span></div>
       <div class="top-actions">
-        <button id="sound" class="icon-button" aria-label="开启音效" aria-pressed="false" title="音效"><svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path id="sound-waves" d="m16 9 5 6m0-6-5 6"/></svg></button>
+        <button id="sound" class="icon-button" aria-label="关闭配乐和音效" aria-pressed="true" title="配乐与音效"><svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path id="sound-waves" d="M15 8c3 2 3 6 0 8m3-11c5 4 5 10 0 14"/></svg></button>
         <button id="pause" class="icon-button" aria-label="暂停游戏" aria-pressed="false" title="暂停（空格）"><svg viewBox="0 0 24 24"><path id="pause-icon" d="M8 5v14M16 5v14"/></svg></button>
         <button id="restart" class="restart" title="重新开始（R）"><svg viewBox="0 0 24 24"><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/></svg><span>重新开始</span></button>
       </div>
@@ -32,7 +32,7 @@
     <div id="error" class="error" hidden><h2>场景暂时无法加载</h2><p id="error-message">请使用支持 WebGL 2 的浏览器，并开启硬件加速。</p><button onclick="location.reload()">重新加载</button></div>
     <footer class="bottom-bar">
       <div class="chapter"><div class="eyebrow"><span class="chapter-num">01</span> CALIFORNIA COLLECTION</div><h1>Los Angeles<span>City Escape</span></h1><div class="chapter-caption"><span class="location-pin">⌖</span><span id="district">Beverly Hills</span><span class="caption-dot">·</span><span>像素城市，自由探索</span></div></div>
-      <div id="hint" class="hint"><span class="mouse-icon"></span><span>按住并拖动，开始吞噬</span><span class="hint-divider"></span><span class="hint-secondary">滚轮缩放</span></div>
+      <div id="hint" class="hint" role="status"><span class="mouse-icon"></span><span>按住并拖动，开始吞噬</span><span class="hint-divider"></span><span class="hint-secondary">滚轮缩放</span></div>
       <div class="view-controls" aria-label="视角控制"><button id="zoom-out" aria-label="缩小视角" title="缩小">−</button><span id="zoom-label">100%</span><button id="zoom-in" aria-label="放大视角" title="放大">+</button><span class="control-divider"></span><button id="reset-view" aria-label="恢复全景" title="恢复全景"><svg viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M8 12h8m-4-4v8"/></svg></button></div>
     </footer>
   </main>

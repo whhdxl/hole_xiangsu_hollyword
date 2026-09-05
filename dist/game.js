@@ -4,6 +4,7 @@ import {Simulation,LEVELS,RADII} from './physics.js';
 import {VoxelBatches} from './voxel-batches.js';
 import {CAMERA_FOV,CAMERA_PITCH,CAMERA_SPANS,followPose} from './camera-rig.js';
 import {movementScale,clampHolePosition,moveHole} from './movement.js';
+import {GameAudio} from './audio.js';
 
 const $ = id => document.getElementById(id);
 let renderer;
@@ -108,10 +109,11 @@ function initialize(landmarks){
   const sizeUpSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:upgradeTexture,transparent:true,depthTest:false,depthWrite:false,toneMapped:false}));sizeUpSprite.renderOrder=10;sizeUpSprite.visible=false;scene.add(sizeUpSprite);
   const burstPositions=new Float32Array(72*3),burstGeometry=new THREE.BufferGeometry();burstGeometry.setAttribute('position',new THREE.BufferAttribute(burstPositions,3));const burst=new THREE.Points(burstGeometry,new THREE.PointsMaterial({color:'#fff5a3',size:.14,transparent:true,opacity:0,depthWrite:false}));burst.frustumCulled=false;scene.add(burst);
   // Follow at every screen size. Upgrades change height, distance and visible area.
-  let zoom=1,width=innerWidth,height=innerHeight,paused=false,dragging=false,started=false,soundOn=false;
+  let zoom=1,width=innerWidth,height=innerHeight,paused=false,dragging=false,started=false,soundOn=true;
   let targetX=sim.hole.x,targetZ=sim.hole.z,lastLevel=1,lastCount=-1,upgradeTime=-10,lastFrame=performance.now(),lastShadow=0,toastTimer,hintTimer;
   let overview=true,currentSpan=47,visualTime=0,openingTime=0;
-  let audioCtx=null,lastSound=0,dragStart=null,activePointerId=null,shadowDirty=false;
+  let dragStart=null,activePointerId=null,shadowDirty=false;
+  const audio=new GameAudio(error=>{console.warn('Game audio failed:',error);toast('音频未能加载，请重新加载场景。');});
   const lookTarget=new THREE.Vector3(0,1.2,-1),cameraPosition=new THREE.Vector3(0,44,61),desiredPosition=new THREE.Vector3(),desiredTarget=new THREE.Vector3(),raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2(),groundPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0),point=new THREE.Vector3();
   const keys=new Set();
   function layout(){
@@ -121,33 +123,33 @@ function initialize(landmarks){
   }
   function setZoom(v){zoom=THREE.MathUtils.clamp(v,.7,2.1);layout();}
   function pointerWorld(e){const rect=$('scene').getBoundingClientRect();pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);return raycaster.ray.intersectPlane(groundPlane,point)?point.clone():null;}
-  function begin(){overview=false;if(started)return;started=true;openingTime=visualTime;clearTimeout(hintTimer);hintTimer=setTimeout(()=>$('hint').classList.add('subtle'),1700);}
+  function showHint(){clearTimeout(hintTimer);$('hint').classList.remove('subtle');$('hint').setAttribute('aria-hidden','false');hintTimer=setTimeout(()=>{$('hint').classList.add('subtle');$('hint').setAttribute('aria-hidden','true');},5000);}
+  function begin(){overview=false;audio.playing=true;audio.unlock();if(started)return;started=true;openingTime=visualTime;}
   function releasePointer(e){if(e&&e.pointerId!==activePointerId)return;dragging=false;dragStart=null;activePointerId=null;$('scene').classList.remove('dragging');}
   $('scene').addEventListener('pointerdown',e=>{if(paused||dragging||!e.isPrimary||e.button>0)return;const p=pointerWorld(e);if(!p)return;dragging=true;activePointerId=e.pointerId;begin();$('scene').focus({preventScroll:true});$('scene').setPointerCapture(e.pointerId);$('scene').classList.add('dragging');dragStart={clientX:e.clientX,clientY:e.clientY};});
   $('scene').addEventListener('pointermove',e=>{if(!dragging||paused||e.pointerId!==activePointerId)return;const p=pointerWorld(e),previous=pointerWorld(dragStart);if(!p||!previous)return;const scale=movementScale(sim.level),target=clampHolePosition(targetX+(p.x-previous.x)*scale,targetZ+(p.z-previous.z)*scale,sim.hole.radius);targetX=target.x;targetZ=target.z;dragStart={clientX:e.clientX,clientY:e.clientY};});
   $('scene').addEventListener('pointerup',releasePointer);$('scene').addEventListener('pointercancel',releasePointer);$('scene').addEventListener('lostpointercapture',releasePointer);
   $('scene').addEventListener('wheel',e=>{e.preventDefault();setZoom(zoom*Math.exp(-e.deltaY*.001));},{passive:false});
-  function togglePause(){paused=!paused;$('paused').hidden=!paused;$('pause').setAttribute('aria-pressed',String(paused));$('pause').setAttribute('aria-label',paused?'继续游戏':'暂停游戏');$('pause-icon').setAttribute('d',paused?'M8 4 19 12 8 20Z':'M8 5v14M16 5v14');releasePointer();keys.clear();}
+  function togglePause(){paused=!paused;$('paused').hidden=!paused;$('pause').setAttribute('aria-pressed',String(paused));$('pause').setAttribute('aria-label',paused?'继续游戏':'暂停游戏');$('pause-icon').setAttribute('d',paused?'M8 4 19 12 8 20Z':'M8 5v14M16 5v14');releasePointer();keys.clear();audio.setPlaying(started&&!paused&&!document.hidden);}
   function toast(t){$('toast').textContent=t;$('toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('visible'),2400);}
-  function reset(){sim.reset();voxels.reset();updateSizeLabel();directionX=0;directionZ=-1;previousHoleX=0;previousHoleZ=20.4;signMeshes.forEach(m=>m.visible=true);targetX=0;targetZ=20.4;lastLevel=1;lastCount=-1;upgradeTime=-10;started=false;overview=true;currentSpan=47;releasePointer();keys.clear();if(paused)togglePause();clearTimeout(hintTimer);$('hint').classList.remove('subtle');$('toast').classList.remove('visible');setZoom(1);renderer.shadowMap.needsUpdate=true;updateHUD();}
+  function reset(){sim.reset();voxels.reset();updateSizeLabel();directionX=0;directionZ=-1;previousHoleX=0;previousHoleZ=20.4;signMeshes.forEach(m=>m.visible=true);targetX=0;targetZ=20.4;lastLevel=1;lastCount=-1;upgradeTime=-10;started=false;overview=true;currentSpan=47;releasePointer();keys.clear();if(paused)togglePause();audio.reset();showHint();$('toast').classList.remove('visible');setZoom(1);renderer.shadowMap.needsUpdate=true;updateHUD();}
   $('pause').onclick=togglePause;$('resume').onclick=togglePause;$('restart').onclick=reset;
   $('zoom-in').onclick=()=>setZoom(zoom*1.15);$('zoom-out').onclick=()=>setZoom(zoom/1.15);$('reset-view').onclick=()=>{overview=!overview;setZoom(1);};
-  $('sound').onclick=()=>{soundOn=!soundOn;if(soundOn){audioCtx??=new(window.AudioContext||window.webkitAudioContext)();audioCtx.resume().catch(err=>console.warn('Audio could not resume:',err));} $('sound').setAttribute('aria-pressed',String(soundOn));$('sound').setAttribute('aria-label',soundOn?'关闭音效':'开启音效');$('sound-waves').setAttribute('d',soundOn?'M15 8c3 2 3 6 0 8m3-11c5 4 5 10 0 14':'m16 9 5 6m0-6-5 6');};
-  function playPop(){if(!soundOn||!audioCtx||audioCtx.currentTime-lastSound<.065)return;lastSound=audioCtx.currentTime;const oscillator=audioCtx.createOscillator(),gain=audioCtx.createGain();oscillator.type='sine';oscillator.frequency.setValueAtTime(200+(sim.count%7)*40,lastSound);oscillator.frequency.exponentialRampToValueAtTime(80,lastSound+.08);gain.gain.setValueAtTime(.055,lastSound);gain.gain.exponentialRampToValueAtTime(.001,lastSound+.09);oscillator.connect(gain);gain.connect(audioCtx.destination);oscillator.start();oscillator.stop(lastSound+.1);oscillator.onended=()=>{oscillator.disconnect();gain.disconnect();};}
+  $('sound').onclick=()=>{soundOn=!soundOn;audio.setEnabled(soundOn);$('sound').setAttribute('aria-pressed',String(soundOn));$('sound').setAttribute('aria-label',soundOn?'关闭配乐和音效':'开启配乐和音效');$('sound-waves').setAttribute('d',soundOn?'M15 8c3 2 3 6 0 8m3-11c5 4 5 10 0 14':'m16 9 5 6m0-6-5 6');};
+  document.querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>audio.play('click',.28)));
   window.addEventListener('keydown',e=>{if(e.target instanceof HTMLButtonElement)return;const k=e.key.toLowerCase();if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d',' '].includes(k))e.preventDefault();if(k===' '&&!e.repeat)togglePause();if(k==='r'&&!e.repeat)reset();if(!paused&&['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k)){keys.add(k);begin();}});
   window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));window.addEventListener('blur',()=>{keys.clear();releasePointer();});
-  document.addEventListener('visibilitychange',()=>{lastFrame=performance.now();if(document.hidden){keys.clear();releasePointer();}});
+  document.addEventListener('visibilitychange',()=>{lastFrame=performance.now();if(document.hidden){keys.clear();releasePointer();}audio.setPlaying(started&&!paused&&!document.hidden);});
   window.addEventListener('resize',layout);
-  $('scene').addEventListener('webglcontextlost',e=>{e.preventDefault();paused=true;$('error-message').textContent='图形连接已中断，请重新加载场景。';$('error').hidden=false;});
+  $('scene').addEventListener('webglcontextlost',e=>{e.preventDefault();paused=true;audio.setPlaying(false);$('error-message').textContent='图形连接已中断，请重新加载场景。';$('error').hidden=false;});
   function updateHUD(){
     if(sim.count===lastCount)return;lastCount=sim.count;
     const percent=Math.floor(sim.count/world.blocks.length*100);$('count').textContent=sim.count.toLocaleString();$('percent').innerHTML=`${percent}<span>%</span>`;$('progress-fill').style.width=`${percent}%`;document.querySelector('[role="progressbar"]').setAttribute('aria-valuenow',String(percent));
     const level=sim.level;
     $('level').textContent=`Lv. ${level} / ${LEVELS.length}`;
-    if(level>lastLevel){upgradeTime=visualTime;lastLevel=level;updateSizeLabel();playUpgrade();}
-    if(sim.count===world.blocks.length)toast('城市已清空！点击重新开始，再探索一次。');
+    if(level>lastLevel){upgradeTime=visualTime;lastLevel=level;updateSizeLabel();audio.celebrate();}
+    if(sim.count===world.blocks.length){toast('城市已清空！点击重新开始，再探索一次。');audio.celebrate(true);}
   }
-  function playUpgrade(){if(!soundOn||!audioCtx)return;const t=audioCtx.currentTime;for(let i=0;i<3;i++){const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='triangle';o.frequency.value=[392,523.25,783.99][i];g.gain.setValueAtTime(0,t);g.gain.setValueAtTime(.07,t+i*.045);g.gain.exponentialRampToValueAtTime(.001,t+.3+i*.03);o.connect(g);g.connect(audioCtx.destination);o.start(t+i*.045);o.stop(t+.4);o.onended=()=>{o.disconnect();g.disconnect();};}}
   function updateCamera(dt){
     const fullSpan=Math.max(47,70/(width/height))/zoom;
     const desiredSpan=overview?fullSpan:CAMERA_SPANS[sim.level-1]/zoom;
@@ -165,7 +167,7 @@ function initialize(landmarks){
       if(mx||mz){const n=Math.hypot(mx,mz),speed=9*movementScale(sim.level),target=clampHolePosition(targetX+mx/n*simulationDt*speed,targetZ+mz/n*simulationDt*speed,sim.hole.radius);targetX=target.x;targetZ=target.z;}
       const target=moveHole(sim.hole,targetX,targetZ,simulationDt,sim.level);targetX=target.x;targetZ=target.z;
       // Waiting before the first gesture lets the full composition remain intact.
-      if(started&&simulationDt>0){sim.tick(simulationDt,transform,playPop);const position=clampHolePosition(sim.hole.x,sim.hole.z,sim.hole.radius);sim.hole.x=position.x;sim.hole.z=position.z;const target=clampHolePosition(targetX,targetZ,sim.hole.radius);targetX=target.x;targetZ=target.z;if(voxels.dirty.size){voxels.flush();shadowDirty=true;}}
+      if(started&&simulationDt>0){const beforeCount=sim.count,beforeActive=sim.active.length;sim.tick(simulationDt,transform);const consumed=sim.count-beforeCount;audio.swallow(consumed,Math.max(0,sim.active.length-beforeActive+consumed),sim.level);const position=clampHolePosition(sim.hole.x,sim.hole.z,sim.hole.radius);sim.hole.x=position.x;sim.hole.z=position.z;const target=clampHolePosition(targetX,targetZ,sim.hole.radius);targetX=target.x;targetZ=target.z;if(voxels.dirty.size){voxels.flush();shadowDirty=true;}}
       world.signs.forEach((s,i)=>{if(s.entity>=0)signMeshes[i].visible=!world.entities[s.entity].collapsing;});
       updateHUD();
       updateCamera(dt);
@@ -189,5 +191,5 @@ function initialize(landmarks){
     const district=sim.hole.z< -13?'Hollywood Hills':sim.hole.z< -4?'Downtown Los Angeles':sim.hole.z<7?(sim.hole.x< -7?'Sunset Studios':sim.hole.x>10?'The Grove':'Fountain Plaza'):sim.hole.z<15&&Math.abs(sim.hole.x)<4?'Liberty Plaza':'Beverly Hills';$('district').textContent=district;
     renderer.render(scene,camera);
   }
-  layout();currentSpan=Math.max(47,70/(width/height));updateCamera(1);renderer.shadowMap.needsUpdate=true;renderer.render(scene,camera);$('loading').hidden=true;requestAnimationFrame(frame);
+  layout();currentSpan=Math.max(47,70/(width/height));updateCamera(1);renderer.shadowMap.needsUpdate=true;renderer.render(scene,camera);$('loading').hidden=true;showHint();requestAnimationFrame(frame);
 }
