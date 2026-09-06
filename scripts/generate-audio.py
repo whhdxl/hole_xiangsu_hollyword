@@ -2,7 +2,7 @@
 
 No reference audio is sampled. Requires numpy, scipy and ffmpeg.
 Run: python scripts/generate-audio.py [output_directory]
-Then run scripts/generate-music.py with the same directory for the current BGM.
+Then run scripts/generate-music.py and scripts/generate-asmr-sfx.py with the same directory for the current music and falling textures.
 """
 import json
 import math

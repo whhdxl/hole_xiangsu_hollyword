@@ -5,6 +5,7 @@ import {VoxelBatches} from './voxel-batches.js';
 import {CAMERA_FOV,CAMERA_PITCH,CAMERA_SPANS,followPose} from './camera-rig.js';
 import {movementScale,clampHolePosition,moveHole} from './movement.js';
 import {GameAudio} from './audio.js';
+import {createBackgroundCity} from './background-city.js';
 
 const $ = id => document.getElementById(id);
 let renderer;
@@ -63,12 +64,11 @@ function initialize(landmarks){
   world.terrain.forEach((b,i)=>{dummy.position.set(b.x,b.y,b.z);dummy.rotation.set(0,b.rotation,0);dummy.scale.set(b.sx,b.sy,b.sz);dummy.updateMatrix();terrain.setMatrixAt(i,dummy.matrix);terrain.setColorAt(i,color.set(b.color).multiplyScalar(b.shade));});scene.add(terrain);
   // A large cyan world around the raised city, with separated distant city islands.
   const outerFloor=new THREE.Mesh(new THREE.PlaneGeometry(420,420),new THREE.MeshStandardMaterial({color:'#42cbdc',roughness:.64,metalness:.06}));outerFloor.rotation.x=-Math.PI/2;outerFloor.position.y=-3.71;outerFloor.receiveShadow=true;scene.add(outerFloor);
-  const islandMat=new THREE.MeshStandardMaterial({color:'#78b34b',roughness:1});
-  const farBuildingMat=new THREE.MeshStandardMaterial({color:'#c8e1da',roughness:.9});
-  for(const [x,z,w,d] of [[-72,-44,28,25],[6,-69,33,22],[68,-31,25,31]]){
-    const base=new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({color:'#d1bb86',roughness:.9}));base.position.set(x,-2.5,z);base.scale.set(w,2.4,d);base.receiveShadow=true;scene.add(base);
-    const turf=new THREE.Mesh(geometry,islandMat);turf.position.set(x,-1.23,z);turf.scale.set(w,.16,d);scene.add(turf);
-    for(let i=0;i<11;i++){const h=2.0+(i*7%9),building=new THREE.Mesh(geometry,farBuildingMat);building.position.set(x-w*.35+(i%4)*w*.22,-1.15+h/2,z-d*.3+Math.floor(i/4)*d*.27);building.scale.set(2.2+(i%2),h,2.3);scene.add(building);}
+  const backgroundMat=new THREE.MeshStandardMaterial({color:'#ffffff',roughness:.94,metalness:0});
+  for(const district of createBackgroundCity()){
+    const mesh=new THREE.InstancedMesh(geometry,backgroundMat,district.boxes.length);mesh.name=district.name;
+    district.boxes.forEach((b,i)=>{dummy.position.set(b.x,b.y,b.z);dummy.rotation.set(0,0,0);dummy.scale.set(b.sx,b.sy,b.sz);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);mesh.setColorAt(i,color.set(b.color));});
+    mesh.computeBoundingSphere();scene.add(mesh);
   }
   // Light blue horizon and quiet voxel clouds.
   const cloudMat=new THREE.MeshStandardMaterial({color:'#fffefa',roughness:1});

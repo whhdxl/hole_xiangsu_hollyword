@@ -54,8 +54,9 @@ export class GameAudio {
   swallow(count,released,level){
     if(!this.enabled||!this.playing||this.context?.state!=='running')return;
     const now=this.context.currentTime;
-    if(count>0&&now-this.lastGulp>=.085){this.lastGulp=now;this.variant=(this.variant+1)%3;this.play('gulp'+(this.variant+1),.48+Math.min(count,80)*.002,1+(level-1)*.008);}
-    if(released>24&&now-this.lastCrumble>=.25){this.lastCrumble=now;this.play('crumble',.21+Math.min(released,300)*.0004);}
+    // Soft grains overlap gently, with subtle spacing and pitch variation.
+    if(count>0&&now-this.lastGulp>=.15+this.variant*.012){this.lastGulp=now;this.variant=(this.variant+1)%3;this.play('gulp'+(this.variant+1),.48+Math.min(count,80)*.00125,1+(level-1)*.002);}
+    if(released>24&&now-this.lastCrumble>=.48){this.lastCrumble=now;this.play('crumble',.26+Math.min(released,300)*.00025);}
   }
   celebrate(complete=false){
     this.play(complete?'complete':'upgrade',complete?.85:.78,1,true);
