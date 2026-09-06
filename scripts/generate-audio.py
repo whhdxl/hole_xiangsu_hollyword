@@ -1,7 +1,8 @@
 """Original, deterministic soundtrack for Los Angeles Voxel Escape.
 
 No reference audio is sampled. Requires numpy, scipy and ffmpeg.
-Run: python generate-audio.py [output_directory]
+Run: python scripts/generate-audio.py [output_directory]
+Then run scripts/generate-music.py with the same directory for the current BGM.
 """
 import json
 import math

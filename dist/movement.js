@@ -5,8 +5,8 @@ export function movementScale(level) {
 }
 
 export function movementBounds(radius) {
-  // Includes the bright rim, the 11% upgrade overshoot and an extra clear strip.
-  const inset = radius * 1.23 + .65;
+  // Bring the aperture up to the curb; the display rim can overlap the wider plinth.
+  const inset = radius * 1.04 + .12;
   return {minX:MAP_EDGES.minX+inset,maxX:MAP_EDGES.maxX-inset,minZ:MAP_EDGES.minZ+inset,maxZ:MAP_EDGES.maxZ-inset};
 }
 

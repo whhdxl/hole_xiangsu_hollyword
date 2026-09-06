@@ -38,8 +38,9 @@ export class Simulation {
     this.time += dt;
     const {x: hx, z: hz, radius: r} = this.hole;
     const r2 = r * r;
-    const limits=movementBounds(r),wallX=hx<=limits.minX+.04?-1:hx>=limits.maxX-.04?1:0,wallZ=hz<=limits.minZ+.04?-1:hz>=limits.maxZ-.04?1:0;
-    // At an air wall, pull the stranded edge strip inward; it still falls only over the real aperture.
+    const limits=movementBounds(r),wallBand=Math.max(.5,r*.1);
+    const wallX=hx<=limits.minX+wallBand?-1:hx>=limits.maxX-wallBand?1:0,wallZ=hz<=limits.minZ+wallBand?-1:hz>=limits.maxZ-wallBand?1:0;
+    // Start edge suction before the exact stop, including resting fragments at corners.
     const captureDistance2=(x,z)=>{
       const px=wallX<0?Math.max(x,limits.minX):wallX>0?Math.min(x,limits.maxX):x;
       const pz=wallZ<0?Math.max(z,limits.minZ):wallZ>0?Math.min(z,limits.maxZ):z;
@@ -86,7 +87,7 @@ export class Simulation {
         b.state=4;const key=gridKey(Math.floor(b.x*2),Math.floor(b.z*2));if(!this.sleepGrid.has(key))this.sleepGrid.set(key,[]);this.sleepGrid.get(key).push(i);
         this.active[k]=this.active[this.active.length-1];this.active.pop();onChange?.(i,b);continue;
       }
-      if(inside || influence>0){const accel=inside?10:12*influence;b.vx+=(dx/(d+.12)*accel-b.vx*2.3)*dt;b.vz+=(dz/(d+.12)*accel-b.vz*2.3)*dt;}
+      if(inside || influence>0){const accel=inside?10:(hasWall?22:12)*influence;b.vx+=(dx/(d+.12)*accel-b.vx*2.3)*dt;b.vz+=(dz/(d+.12)*accel-b.vz*2.3)*dt;}
       else {b.vx*=drag;b.vz*=drag;}
       b.vy-=18*dt;
       b.x+=b.vx*dt;b.y+=b.vy*dt;b.z+=b.vz*dt;
